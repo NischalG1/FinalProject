@@ -1,3 +1,4 @@
+// frontend/src/pages/Auth/JobSeeker/JobSeekerDashboard.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +25,7 @@ import axiosInstance from "../../../utlis/axiosinstance";
 import { API_PATHS } from "../../../utlis/apiPaths";
 import { useAuth } from "../../../context/AuthContext";
 import DashboardLayout from "../../../components/layout/DashboardLayout";
+import MatchScoreBadge, { MatchDetails } from "../../../components/ui/MatchScoreBadge";
 import toast from "react-hot-toast";
 import moment from "moment";
 
@@ -82,7 +84,7 @@ const JobSeekerDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependency array since it only uses setState functions
+  }, []);
 
   // If role is undefined, default to jobseeker and update context
   // This must be called BEFORE any conditional returns
@@ -367,7 +369,7 @@ const JobSeekerDashboard = () => {
             </div>
           </div>
 
-          {/* Recommended Jobs Section */}
+          {/* Recommended Jobs Section - UPDATED with match details */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -376,8 +378,13 @@ const JobSeekerDashboard = () => {
                   Recommended for You
                 </h2>
                 <p className="text-gray-600">
-                  Jobs matched to your skills and preferences
+                  Jobs matched to your skills and preferences using our AI recommendation engine
                 </p>
+                {recommendationMeta.message && (
+                  <p className="text-sm text-gray-500 mt-1 italic">
+                    {recommendationMeta.message}
+                  </p>
+                )}
               </div>
               {recommendedJobs.length > 0 && (
                 <button
@@ -432,19 +439,13 @@ const JobSeekerDashboard = () => {
                     onClick={() => navigate(`/job/${job._id}`)}
                     className="group relative p-5 border-2 border-gray-100 rounded-xl hover:border-purple-300 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-white to-purple-50/30"
                   >
-                    {/* Match Score Badge */}
+                    {/* Match Score Badge - UPDATED */}
                     <div className="absolute top-4 right-4">
-                      <div
-                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          job.matchScore >= 70
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                            : job.matchScore >= 40
-                              ? "bg-amber-100 text-amber-700 border border-amber-200"
-                              : "bg-gray-100 text-gray-600 border border-gray-200"
-                        }`}
-                      >
-                        {job.matchScore}% match
-                      </div>
+                      <MatchScoreBadge 
+                        score={job.matchScore} 
+                        size="sm"
+                        showLabel={true}
+                      />
                     </div>
 
                     {/* Company Info */}
@@ -509,9 +510,14 @@ const JobSeekerDashboard = () => {
                       </div>
                     )}
 
+                    {/* Match Details - NEW */}
+                    {job.matchDetails && (
+                      <MatchDetails details={job.matchDetails} size="sm" />
+                    )}
+
                     {/* Salary */}
                     {(job.salaryMin || job.salaryMax) && (
-                      <p className="text-xs text-gray-500 font-medium">
+                      <p className="text-xs text-gray-500 font-medium mt-2">
                         💰{" "}
                         {job.salaryMin
                           ? `$${job.salaryMin.toLocaleString()}`

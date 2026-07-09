@@ -1,281 +1,281 @@
+// backend/controllers/recommendationController.js
 const natural = require("natural");
 const Job = require("../models/Jobs");
 const User = require("../models/User");
 const Application = require("../models/Application");
 const SavedJob = require("../models/SavedJobs");
+const RecommenderService = require("../services/recommendation/RecommenderService");
+const CacheService = require("../services/cache/CacheService");
 
-/**
- * Content-Based Filtering Recommendation Engine
- * Uses TF-IDF + Cosine Similarity to match user profiles with job listings.
- *
- * Matching signals (weighted):
- * 1. TF-IDF text similarity on skills, description, requirements
- * 2. Exact category match bonus
- * 3. Exact job type match bonus
- * 4. Location match bonus
- * 5. Salary range overlap bonus
- * 6. Experience level keyword presence bonus
- */
-
-// Weight configuration for scoringqq
-const WEIGHTS = {
-  TFIDF_BASE: 1.0,           // Base weight for TF-IDF text similarity
-  CATEGORY_MATCH: 0.25,       // Bonus for exact category match
-  JOB_TYPE_MATCH: 0.15,       // Bonus for exact job type match
-  LOCATION_MATCH: 0.15,       // Bonus for location match
-  SALARY_OVERLAP: 0.10,       // Bonus for salary range overlap
-  EXPERIENCE_MATCH: 0.10,     // Bonus for experience level keyword match
-};
-
-/**
- * Build a text document from user profile for TF-IDF comparison
- */
-function buildUserDocument(user) {
-  const parts = [];
-
-  // Skills are the primary matching signal
-  if (user.skills && user.skills.length > 0) {
-    // Repeat skills to give them more weight in TF-IDF
-    parts.push(user.skills.join(" "));
-    parts.push(user.skills.join(" "));
-  }
-
-  if (user.preferredCategory) parts.push(user.preferredCategory);
-  if (user.preferredJobType) parts.push(user.preferredJobType);
-  if (user.preferredLocation) parts.push(user.preferredLocation);
-  if (user.experienceLevel) parts.push(user.experienceLevel);
-
-  return parts.join(" ").toLowerCase();
-}
-
-/**
- * Build a text document from a job listing for TF-IDF comparison
- */
-function buildJobDocument(job) {
-  const parts = [];
-
-  if (job.title) parts.push(job.title);
-  if (job.skills && job.skills.length > 0) {
-    // Repeat skills to give them more weight
-    parts.push(job.skills.join(" "));
-    parts.push(job.skills.join(" "));
-  }
-  if (job.description) parts.push(job.description);
-  if (job.requirements) parts.push(job.requirements);
-  if (job.category) parts.push(job.category);
-  if (job.type) parts.push(job.type);
-  if (job.location) parts.push(job.location);
-
-  return parts.join(" ").toLowerCase();
-}
-
-/**
- * Check if salary ranges overlap
- */
-function salaryOverlaps(userMin, userMax, jobMin, jobMax) {
-  if (!userMin && !userMax) return false;
-  if (!jobMin && !jobMax) return false;
-
-  const uMin = userMin || 0;
-  const uMax = userMax || Infinity;
-  const jMin = jobMin || 0;
-  const jMax = jobMax || Infinity;
-
-  return uMin <= jMax && jMin <= uMax;
-}
-
-/**
- * Check if location matches (case-insensitive substring match)
- */
-function locationMatches(userLocation, jobLocation) {
-  if (!userLocation || !jobLocation) return false;
-  const uLoc = userLocation.toLowerCase().trim();
-  const jLoc = jobLocation.toLowerCase().trim();
-  return jLoc.includes(uLoc) || uLoc.includes(jLoc);
-}
-
-/**
- * Check if experience level keywords appear in job text
- */
-function experienceMatches(userLevel, jobText) {
-  if (!userLevel || !jobText) return false;
-
-  const levelKeywords = {
-    Entry: ["entry", "junior", "fresher", "graduate", "0-1", "0-2", "intern"],
-    Mid: ["mid", "intermediate", "2-5", "3-5", "2+", "3+"],
-    Senior: ["senior", "lead", "5+", "7+", "experienced", "sr."],
-    Lead: ["lead", "principal", "architect", "manager", "head", "director", "8+", "10+"],
-  };
-
-  const keywords = levelKeywords[userLevel] || [];
-  const text = jobText.toLowerCase();
-
-  return keywords.some((kw) => text.includes(kw));
-}
-
-// @desc    Get recommended jobs for the authenticated jobseeker
+// @desc    Get hybrid recommendations for jobseeker
 // @route   GET /api/jobs/recommendations
 // @access  Private (jobseeker only)
 exports.getRecommendedJobs = async (req, res) => {
-  try {
-    // 1. Validate user role
-    if (req.user.role !== "jobseeker") {
-      return res.status(403).json({ message: "Only job seekers can get recommendations" });
+    try {
+        // 1. Validate user role
+        if (req.user.role !== "jobseeker") {
+            return res.status(403).json({ 
+                message: "Only job seekers can get recommendations" 
+            });
+        }
+
+        const userId = req.user._id;
+        
+        // 2. Check if user has profile data
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const hasProfileData = 
+            (user.skills && user.skills.length > 0) ||
+            user.preferredCategory || 
+            user.preferredJobType || 
+            user.preferredLocation || 
+            user.experienceLevel;
+
+        if (!hasProfileData) {
+            return res.json({
+                recommendations: [],
+                message: "Complete your profile with skills and preferences to get personalized recommendations.",
+                hasProfile: true,
+                totalRecommended: 0
+            });
+        }
+
+        // 3. Get hybrid recommendations using our new service
+        const recommendations = await RecommenderService.getHybridRecommendations(
+            userId, 
+            parseInt(req.query.limit) || 20
+        );
+        
+        // 4. Get saved and applied status for the user
+        const savedJobs = await SavedJob.find({ jobseeker: userId }).select("job");
+        const savedJobIds = savedJobs.map(s => String(s.job));
+
+        const applications = await Application.find({ applicant: userId }).select("job status");
+        const appliedJobStatusMap = {};
+        applications.forEach(app => {
+            appliedJobStatusMap[String(app.job)] = app.status;
+        });
+
+        // 5. Format response with additional data
+        const formattedRecommendations = recommendations.map((item) => {
+            const job = item.job.toObject();
+            const jobIdStr = String(job._id);
+            
+            // Calculate match percentage (max possible score ≈ 1.0)
+            const matchPercentage = Math.round(Math.min((item.score / 1.0) * 100, 100));
+            
+            return {
+                ...job,
+                matchScore: matchPercentage,
+                matchDetails: item.matchDetails,
+                isSaved: savedJobIds.includes(jobIdStr),
+                applicationStatus: appliedJobStatusMap[jobIdStr] || null
+            };
+        });
+
+        // 6. Cache the results for future requests
+        const cacheKey = CacheService.getRecommendationKey(userId);
+        CacheService.set(cacheKey, {
+            recommendations: formattedRecommendations,
+            hasProfile: true,
+            totalRecommended: formattedRecommendations.length,
+            message: `Found ${formattedRecommendations.length} recommended jobs based on your profile.`
+        }, 1800); // Cache for 30 minutes
+
+        // 7. Send response
+        res.json({
+            recommendations: formattedRecommendations,
+            hasProfile: true,
+            totalRecommended: formattedRecommendations.length,
+            message: `Found ${formattedRecommendations.length} recommended jobs based on your profile.`
+        });
+
+    } catch (err) {
+        console.error("Recommendation error:", err);
+        res.status(500).json({ 
+            message: "Failed to get recommendations", 
+            error: err.message 
+        });
     }
+};
 
-    // 2. Fetch full user profile
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+// @desc    Get similar jobs for a specific job
+// @route   GET /api/jobs/:jobId/similar
+// @access  Public
+exports.getSimilarJobs = async (req, res) => {
+    try {
+        const { jobId } = req.params;
+        const limit = parseInt(req.query.limit) || 5;
+
+        // Check cache first
+        const cacheKey = CacheService.getSimilarJobsKey(jobId, limit);
+        const cachedData = CacheService.get(cacheKey);
+        
+        if (cachedData) {
+            console.log('Returning cached similar jobs');
+            return res.json(cachedData);
+        }
+
+        // Get the target job
+        const targetJob = await Job.findById(jobId);
+        if (!targetJob) {
+            return res.status(404).json({ message: "Job not found" });
+        }
+
+        // Find similar jobs based on skills, category, and type
+        const similarJobs = await Job.find({
+            _id: { $ne: jobId }, // Exclude the target job
+            isClosed: false,
+            status: "approved",
+            $or: [
+                { category: targetJob.category },
+                { type: targetJob.type },
+                { skills: { $in: targetJob.skills || [] } }
+            ]
+        })
+        .populate("company", "name companyName companyLogo")
+        .limit(limit * 2); // Get more to filter and sort
+
+        // Score and sort similar jobs
+        const scoredSimilar = similarJobs.map(job => {
+            // Calculate skill match
+            const skillMatch = RecommenderService.calculateSkillMatch(
+                targetJob.skills || [],
+                job.skills || []
+            );
+            
+            // Category match
+            const categoryMatch = targetJob.category === job.category ? 1 : 0;
+            
+            // Type match
+            const typeMatch = targetJob.type === job.type ? 1 : 0;
+            
+            // Location match (if both have location)
+            const locationMatch = targetJob.location && job.location && 
+                targetJob.location.toLowerCase() === job.location.toLowerCase() ? 1 : 0;
+            
+            // Calculate total similarity score
+            const score = (skillMatch * 0.4) + (categoryMatch * 0.3) + (typeMatch * 0.2) + (locationMatch * 0.1);
+            
+            return {
+                ...job.toObject(),
+                similarityScore: Math.round(score * 100),
+                matchDetails: {
+                    skillMatch: Math.round(skillMatch * 100),
+                    categoryMatch: Math.round(categoryMatch * 100),
+                    typeMatch: Math.round(typeMatch * 100),
+                    locationMatch: Math.round(locationMatch * 100)
+                }
+            };
+        });
+
+        // Sort by similarity score and limit results
+        const finalResults = scoredSimilar
+            .sort((a, b) => b.similarityScore - a.similarityScore)
+            .slice(0, limit);
+
+        // Cache the results
+        CacheService.set(cacheKey, {
+            similarJobs: finalResults,
+            totalFound: finalResults.length
+        }, 3600); // Cache for 1 hour
+
+        res.json({
+            similarJobs: finalResults,
+            totalFound: finalResults.length
+        });
+
+    } catch (err) {
+        console.error("Similar jobs error:", err);
+        res.status(500).json({ 
+            message: "Failed to get similar jobs", 
+            error: err.message 
+        });
     }
+};
 
-    // 3. Check if user has any profile data for recommendations
-    const hasProfileData =
-      (user.skills && user.skills.length > 0) ||
-      user.preferredCategory ||
-      user.preferredJobType ||
-      user.preferredLocation ||
-      user.experienceLevel;
+// @desc    Get collaborative recommendations (jobs liked by similar users)
+// @route   GET /api/jobs/collaborative-recommendations
+// @access  Private (jobseeker only)
+exports.getCollaborativeRecommendations = async (req, res) => {
+    try {
+        // 1. Validate user role
+        if (req.user.role !== "jobseeker") {
+            return res.status(403).json({ 
+                message: "Only job seekers can get recommendations" 
+            });
+        }
 
-    if (!hasProfileData) {
-      return res.json({
-        recommendations: [],
-        message: "Complete your profile with skills and preferences to get personalized recommendations.",
-        hasProfile: false,
-      });
+        const userId = req.user._id;
+        const limit = parseInt(req.query.limit) || 10;
+
+        // 2. Get collaborative recommendations
+        const recommendations = await RecommenderService.getCollaborativeRecommendations(
+            userId, 
+            limit
+        );
+
+        // 3. Get saved and applied status
+        const savedJobs = await SavedJob.find({ jobseeker: userId }).select("job");
+        const savedJobIds = savedJobs.map(s => String(s.job));
+
+        const applications = await Application.find({ applicant: userId }).select("job status");
+        const appliedJobStatusMap = {};
+        applications.forEach(app => {
+            appliedJobStatusMap[String(app.job)] = app.status;
+        });
+
+        // 4. Format response
+        const formattedRecommendations = recommendations.map((item) => {
+            const job = item.job.toObject();
+            const jobIdStr = String(job._id);
+            const matchPercentage = Math.round(Math.min((item.score / 1.0) * 100, 100));
+            
+            return {
+                ...job,
+                matchScore: matchPercentage,
+                matchDetails: item.matchDetails,
+                isSaved: savedJobIds.includes(jobIdStr),
+                applicationStatus: appliedJobStatusMap[jobIdStr] || null
+            };
+        });
+
+        res.json({
+            recommendations: formattedRecommendations,
+            totalRecommended: formattedRecommendations.length,
+            message: `Found ${formattedRecommendations.length} collaborative recommendations.`
+        });
+
+    } catch (err) {
+        console.error("Collaborative recommendation error:", err);
+        res.status(500).json({ 
+            message: "Failed to get collaborative recommendations", 
+            error: err.message 
+        });
     }
+};
 
-    // 4. Fetch all approved, open jobs
-    const jobs = await Job.find({
-      isClosed: false,
-      status: "approved",
-    }).populate("company", "name companyName companyLogo");
-
-    if (jobs.length === 0) {
-      return res.json({
-        recommendations: [],
-        message: "No jobs available at the moment.",
-        hasProfile: true,
-      });
+// @desc    Clear recommendation cache
+// @route   POST /api/jobs/recommendations/clear-cache
+// @access  Private
+exports.clearRecommendationCache = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const cacheKey = CacheService.getRecommendationKey(userId);
+        CacheService.delete(cacheKey);
+        
+        res.json({ 
+            message: "Recommendation cache cleared successfully",
+            cleared: true
+        });
+    } catch (err) {
+        console.error("Clear cache error:", err);
+        res.status(500).json({ 
+            message: "Failed to clear cache", 
+            error: err.message 
+        });
     }
-
-    // 5. Build TF-IDF model
-    const TfIdf = natural.TfIdf;
-    const tfidf = new TfIdf();
-
-    // Document 0 = user profile
-    const userDoc = buildUserDocument(user);
-    tfidf.addDocument(userDoc);
-
-    // Documents 1..N = job listings
-    const jobDocuments = jobs.map((job) => buildJobDocument(job));
-    jobDocuments.forEach((doc) => tfidf.addDocument(doc));
-
-    // 6. Extract user terms for TF-IDF scoring
-    const tokenizer = new natural.WordTokenizer();
-    const userTerms = [...new Set(tokenizer.tokenize(userDoc))];
-
-    // 7. Score each job
-    const scoredJobs = jobs.map((job, index) => {
-      const jobDocIndex = index + 1; // offset by 1 since user doc is at 0
-
-      // TF-IDF similarity: sum the TF-IDF values of user terms in the job document
-      let tfidfScore = 0;
-      userTerms.forEach((term) => {
-        tfidfScore += tfidf.tfidf(term, jobDocIndex);
-      });
-
-      // Normalize TF-IDF score (avoid division by zero)
-      const maxPossibleScore = userTerms.length > 0 ? userTerms.length * 5 : 1;
-      let normalizedTfidf = Math.min(tfidfScore / maxPossibleScore, 1.0);
-
-      // Apply base weight
-      let totalScore = normalizedTfidf * WEIGHTS.TFIDF_BASE;
-
-      // Bonus: exact category match
-      if (
-        user.preferredCategory &&
-        job.category &&
-        user.preferredCategory.toLowerCase() === job.category.toLowerCase()
-      ) {
-        totalScore += WEIGHTS.CATEGORY_MATCH;
-      }
-
-      // Bonus: exact job type match
-      if (
-        user.preferredJobType &&
-        job.type &&
-        user.preferredJobType.toLowerCase() === job.type.toLowerCase()
-      ) {
-        totalScore += WEIGHTS.JOB_TYPE_MATCH;
-      }
-
-      // Bonus: location match
-      if (locationMatches(user.preferredLocation, job.location)) {
-        totalScore += WEIGHTS.LOCATION_MATCH;
-      }
-
-      // Bonus: salary overlap
-      if (
-        salaryOverlaps(
-          user.expectedSalaryMin,
-          user.expectedSalaryMax,
-          job.salaryMin,
-          job.salaryMax
-        )
-      ) {
-        totalScore += WEIGHTS.SALARY_OVERLAP;
-      }
-
-      // Bonus: experience level match
-      const jobText = `${job.title || ""} ${job.description || ""} ${job.requirements || ""}`;
-      if (experienceMatches(user.experienceLevel, jobText)) {
-        totalScore += WEIGHTS.EXPERIENCE_MATCH;
-      }
-
-      return {
-        job,
-        score: totalScore,
-      };
-    });
-
-    // 8. Sort by score descending, filter out zero-score jobs
-    const rankedJobs = scoredJobs
-      .filter((item) => item.score > 0.01)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 20); // Top 20 recommendations
-
-    // 9. Fetch saved/applied status for the user
-    const savedJobs = await SavedJob.find({ jobseeker: user._id }).select("job");
-    const savedJobIds = savedJobs.map((s) => String(s.job));
-
-    const applications = await Application.find({ applicant: user._id }).select("job status");
-    const appliedJobStatusMap = {};
-    applications.forEach((app) => {
-      appliedJobStatusMap[String(app.job)] = app.status;
-    });
-
-    // 10. Build response with score and status info
-    const recommendations = rankedJobs.map((item) => {
-      const jobIdStr = String(item.job._id);
-      // Convert score to a percentage (max possible ≈ 1.75)
-      const matchPercentage = Math.round(Math.min((item.score / 1.75) * 100, 100));
-
-      return {
-        ...item.job.toObject(),
-        matchScore: matchPercentage,
-        isSaved: savedJobIds.includes(jobIdStr),
-        applicationStatus: appliedJobStatusMap[jobIdStr] || null,
-      };
-    });
-
-    res.json({
-      recommendations,
-      hasProfile: true,
-      message: `Found ${recommendations.length} recommended jobs based on your profile.`,
-    });
-  } catch (err) {
-    console.error("Recommendation error:", err);
-    res.status(500).json({ message: err.message });
-  }
 };

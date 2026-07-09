@@ -1,3 +1,4 @@
+// frontend/src/pages/Auth/JobSeeker/SavedJobs.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,11 +10,13 @@ import {
   Calendar,
   DollarSign,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import axiosInstance from '../../../utlis/axiosinstance';
 import { API_PATHS } from '../../../utlis/apiPaths';
 import { useAuth } from '../../../context/AuthContext';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import MatchScoreBadge, { MatchDetails } from '../../../components/ui/MatchScoreBadge';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 
@@ -137,9 +140,19 @@ const SavedJobs = () => {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                            {job.title}
-                          </h3>
+                          <div className="flex items-center gap-3 mb-1 flex-wrap">
+                            <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {job.title}
+                            </h3>
+                            {/* Match Score Badge - NEW */}
+                            {job.matchScore && (
+                              <MatchScoreBadge 
+                                score={job.matchScore} 
+                                size="sm"
+                                showLabel={true}
+                              />
+                            )}
+                          </div>
                           <p className="text-gray-600 font-medium mb-2">
                             {job.company?.companyName || job.company?.name}
                           </p>
@@ -165,6 +178,10 @@ const SavedJobs = () => {
                               </span>
                             )}
                           </div>
+                          {/* Match Details - NEW */}
+                          {job.matchDetails && (
+                            <MatchDetails details={job.matchDetails} size="sm" />
+                          )}
                         </div>
                       </div>
                       <p className="text-gray-700 line-clamp-2 mb-4 text-sm leading-relaxed">
