@@ -71,7 +71,6 @@ export const employerFeatures = [
   },
 ];
 
-// Navigation items configuration for Employer
 export const EMPLOYER_NAVIGATION_MENU = [
   { id: "employer-dashboard", name: "Dashboard", icon: LayoutDashboard },
   { id: "post-job", name: "Post Job", icon: Plus },
@@ -79,7 +78,6 @@ export const EMPLOYER_NAVIGATION_MENU = [
   { id: "company-profile", name: "Company Profile", icon: Building2 },
 ];
 
-// Navigation items configuration for Job Seeker
 export const JOBSEEKER_NAVIGATION_MENU = [
   { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
   { id: "find-jobs", name: "Find Jobs", icon: Search },
@@ -87,17 +85,14 @@ export const JOBSEEKER_NAVIGATION_MENU = [
   { id: "profile", name: "Profile", icon: UserCheck },
 ];
 
-// Navigation items configuration for Admin
 export const ADMIN_NAVIGATION_MENU = [
   { id: "admin-dashboard", name: "Dashboard", icon: LayoutDashboard },
   { id: "admin-jobs", name: "Job Approvals", icon: CheckCircle2 },
   { id: "admin-users", name: "User Management", icon: Users },
 ];
 
-// Default navigation (for backward compatibility)
 export const NAVIGATION_MENU = EMPLOYER_NAVIGATION_MENU;
 
-// Categories and job types
 export const CATEGORIES = [
   { value: "Engineering", label: "Engineering" },
   { value: "Design", label: "Design" },
@@ -109,7 +104,6 @@ export const CATEGORIES = [
   { value: "Operations", label: "Operations" },
   { value: "Finance", label: "Finance" },
   { value: "HR", label: "Human Resources" },
-  
   { value: "Other", label: "Other" },
 ];
 

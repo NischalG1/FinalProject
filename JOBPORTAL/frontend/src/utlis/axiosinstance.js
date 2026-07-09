@@ -30,22 +30,16 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Handle common errors globally
     if (error.response) {
       if (error.response.status === 401) {
-        // Check if this is a login/register request - don't redirect for those
         const requestUrl = error.config?.url || '';
         const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
         
-        // Don't redirect on login/register failures - let the component handle the error
         if (!isAuthRequest) {
-          // This is an authenticated request that got 401 - session expired
-          // Clear invalid token and redirect to login
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           const currentPath = window.location.pathname;
           
-          // Only redirect if not already on login or signup page
           if (currentPath !== '/login' && currentPath !== '/signup') {
             window.location.href = "/login";
           }

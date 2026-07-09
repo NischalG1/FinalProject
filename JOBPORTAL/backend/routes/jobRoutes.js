@@ -9,32 +9,21 @@ const {
     toggleCloseJob,
     getJobsEmployer,
 } = require("../controllers/jobController");
-const {
-    getSimilarJobs,
-    getCollaborativeRecommendations,
-    clearRecommendationCache
-} = require("../controllers/recommendationController");
 const { protect } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
+
+// IMPORTANT: Specific routes must come BEFORE dynamic routes
+// Employer jobs route - specific path
+router.route("/get-jobs-employer").get(protect, getJobsEmployer);
 
 // Public routes
 router.route("/").get(getJobs);
 router.route("/:id").get(getJobById);
 
-// Job similarity route - MUST be before the :id route that uses same parameter
-router.get("/:jobId/similar", getSimilarJobs);
-
 // Protected employer routes
 router.route("/").post(protect, createJob);
-router.route("/get-jobs-employer").get(protect, getJobsEmployer);
 router.route("/:id").put(protect, updateJob).delete(protect, deleteJob);
 router.put("/:id/toggle-close", protect, toggleCloseJob);
-
-// Collaborative recommendations (for jobseekers)
-router.get("/collaborative/recommendations", protect, getCollaborativeRecommendations);
-
-// Cache management
-router.post("/recommendations/clear-cache", protect, clearRecommendationCache);
 
 module.exports = router;

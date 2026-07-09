@@ -10,6 +10,7 @@ import {
   XCircle,
   Briefcase,
   CheckCircle,
+  ArrowRight,
 } from "lucide-react";
 import { validateEmail } from "../../utlis/helper";
 import { useAuth } from "../../context/AuthContext";
@@ -17,7 +18,7 @@ import axiosInstance from "../../utlis/axiosinstance";
 import { API_PATHS } from "../../utlis/apiPaths";
 
 const Login = () => {
-  const {login} = useAuth()
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -36,12 +37,9 @@ const Login = () => {
     return "";
   };
 
-  // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user types
     setFormState((prev) => ({
       ...prev,
       errors: { ...prev.errors, [name]: "" },
@@ -54,7 +52,6 @@ const Login = () => {
       password: validatePassword(formData.password),
     };
 
-    // Remove empty errors
     Object.keys(errors).forEach((key) => {
       if (!errors[key]) delete errors[key];
     });
@@ -71,7 +68,6 @@ const Login = () => {
     setFormState((prev) => ({ ...prev, loading: true }));
 
     try {
-      // Login API integration
       const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, {
         email: formData.email,
         password: formData.password,
@@ -89,7 +85,6 @@ const Login = () => {
           errors: {},
         }));
 
-        // Redirect based on role - jobseeker goes to /dashboard, employer goes to /employer-dashboard
         setTimeout(() => {
           const redirectPath = user.role === "employer" ? "/employer-dashboard" : "/dashboard";
           window.location.href = redirectPath;
@@ -110,30 +105,28 @@ const Login = () => {
 
   if (formState.success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#f3f2ef] px-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center"
+          className="bg-white p-12 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-200"
         >
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Welcome Back!
-          </h2>
-          <p className="text-gray-600 mb-4">
-            You have been successfully logged in.
-          </p>
-          <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent mx-auto" />
-          <p className="text-sm text-gray-500 mt-2">
-            Redirecting to your dashboard...
-          </p>
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-12 h-12 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back! 👋</h2>
+          <p className="text-gray-500 mb-6">You have been successfully logged in.</p>
+          <div className="flex items-center justify-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-[#0a66c2] border-t-transparent"></div>
+            <span className="text-sm text-gray-400">Redirecting to your dashboard...</span>
+          </div>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] relative overflow-hidden px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#f3f2ef] relative overflow-hidden px-4">
       {/* Decorative background glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100 rounded-full blur-[120px] opacity-60" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-100 rounded-full blur-[120px] opacity-60" />
@@ -141,134 +134,158 @@ const Login = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white w-full max-w-md"
+        className="relative z-10 bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden"
       >
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-linear-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-            <Briefcase className="text-white w-7 h-7" />
+        {/* Header - LinkedIn Style */}
+        <div className="bg-gradient-to-r from-[#0a66c2] to-[#004182] p-8 text-center text-white">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 shadow-lg border border-white/20">
+            <Briefcase className="text-white w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Welcome Back
-          </h2>
-          <p className="text-gray-500 mt-2 font-medium">
-            Sign in to your account
-          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Welcome Back</h2>
+          <p className="text-blue-100 text-sm mt-1">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Submit Error */}
-          <AnimatePresence>
-            {formState.errors.submit && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="p-3 rounded-xl bg-red-50 border border-red-100 flex items-center gap-2 text-red-600 text-sm font-medium"
-              >
-                <XCircle className="w-4 h-4 shrink-0" />
-                {formState.errors.submit}
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Submit Error */}
+            <AnimatePresence>
+              {formState.errors.submit && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-red-600 text-sm font-medium"
+                >
+                  <XCircle className="w-4 h-4 shrink-0" />
+                  {formState.errors.submit}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          {/* Email field */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-              Email Address
-            </label>
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className={`w-full pl-12 pr-4 py-4 rounded-2xl border-2 bg-gray-50/50 transition-all outline-none ${
-                  formState.errors.email
-                    ? "border-red-200"
-                    : "border-transparent focus:border-blue-500 focus:bg-white"
-                }`}
-                placeholder="Enter your email"
-              />
+            {/* Email field */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <div className="relative group">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#0a66c2] transition-colors" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 bg-gray-50/50 transition-all outline-none text-sm ${
+                    formState.errors.email
+                      ? "border-red-300 focus:border-red-500"
+                      : "border-gray-200 focus:border-[#0a66c2] focus:bg-white"
+                  }`}
+                  placeholder="Enter your email"
+                />
+              </div>
+              {formState.errors.email && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  {formState.errors.email}
+                </p>
+              )}
             </div>
-            {formState.errors.email && (
-              <p className="text-red-500 text-xs mt-1 ml-2 flex items-center font-semibold italic">
-                <AlertCircle className="w-3.5 h-3.5 mr-1" />{" "}
-                {formState.errors.email}
-              </p>
-            )}
-          </div>
 
-          {/* Password field */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-              Password
-            </label>
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-              <input
-                type={formState.showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={`w-full pl-12 pr-12 py-4 rounded-2xl border-2 bg-gray-50/50 transition-all outline-none ${
-                  formState.errors.password
-                    ? "border-red-200"
-                    : "border-transparent focus:border-blue-500 focus:bg-white"
-                }`}
-                placeholder="Enter your password"
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setFormState((p) => ({ ...p, showPassword: !p.showPassword }))
-                }
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
-              >
-                {formState.showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
+            {/* Password field */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="relative group">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#0a66c2] transition-colors" />
+                <input
+                  type={formState.showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`w-full pl-11 pr-12 py-3 rounded-xl border-2 bg-gray-50/50 transition-all outline-none text-sm ${
+                    formState.errors.password
+                      ? "border-red-300 focus:border-red-500"
+                      : "border-gray-200 focus:border-[#0a66c2] focus:bg-white"
+                  }`}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormState((p) => ({ ...p, showPassword: !p.showPassword }))
+                  }
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {formState.showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {formState.errors.password && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  {formState.errors.password}
+                </p>
+              )}
             </div>
-            {formState.errors.password && (
-              <p className="text-red-500 text-xs mt-1 ml-2 flex items-center font-semibold italic">
-                <AlertCircle className="w-3.5 h-3.5 mr-1" />{" "}
-                {formState.errors.password}
-              </p>
-            )}
-          </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={formState.loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70"
-          >
-            {formState.loading ? (
-              <>
-                <Loader className="w-5 h-5 animate-spin" />
-                <span>Signing In...</span>
-              </>
-            ) : (
-              <span>Sign In</span>
-            )}
-          </button>
-
-          {/* Sign Up Link */}
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{" "}
+            {/* Remember Me */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={(e) =>
+                    setFormData({ ...formData, rememberMe: e.target.checked })
+                  }
+                  className="w-4 h-4 text-[#0a66c2] border-gray-300 rounded focus:ring-[#0a66c2]"
+                />
+                Remember me
+              </label>
               <a
-                href="/signup"
-                className="text-blue-600 hover:text-blue-700 font-medium underline-offset-4 hover:underline"
+                href="/forgot-password"
+                className="text-sm text-[#0a66c2] hover:text-[#004182] font-medium transition-colors"
               >
-                Create one here
+                Forgot password?
               </a>
-            </p>
-          </div>
-        </form>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={formState.loading}
+              className="w-full bg-[#0a66c2] text-white py-3.5 rounded-xl font-semibold hover:bg-[#004182] transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 shadow-sm hover:shadow-md"
+            >
+              {formState.loading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+
+            {/* Sign Up Link */}
+            <div className="text-center pt-2">
+              <p className="text-gray-500 text-sm">
+                Don't have an account?{" "}
+                <a
+                  href="/signup"
+                  className="text-[#0a66c2] hover:text-[#004182] font-semibold transition-colors"
+                >
+                  Create one here
+                </a>
+              </p>
+            </div>
+          </form>
+        </div>
       </motion.div>
     </div>
   );

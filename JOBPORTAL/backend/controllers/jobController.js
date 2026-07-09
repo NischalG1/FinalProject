@@ -1,3 +1,4 @@
+// backend/controllers/jobController.js
 const Job = require("../models/Jobs");
 const User = require("../models/User");
 const Application = require("../models/Application");
@@ -10,17 +11,14 @@ exports.createJob = async (req, res) => {
             return res.status(403).json({ message: "Only employers can post jobs" });
         }
 
-        // Set status to pending by default - requires admin approval
         const jobData = {
             ...req.body,
             company: req.user._id,
-            status: "pending", // Always set to pending for admin approval
-            skills: req.body.skills || [] // Ensure skills is an array
+            status: "pending",
+            skills: req.body.skills || []
         };
 
         const job = await Job.create(jobData);
-        
-        // Populate company info before sending response
         await job.populate("company", "name companyName companyLogo email");
         
         console.log("New job created:", {
@@ -51,7 +49,7 @@ exports.getJobs = async (req, res) => {
 
     const query = {
         isClosed: false,
-        status: "approved", // Only show approved jobs
+        status: "approved",
         ...(keyword && { title: { $regex: keyword, $options: "i" } }),
         ...(location && { location: { $regex: location, $options: "i" } }),
         ...(category && { category }),
@@ -101,39 +99,90 @@ exports.getJobs = async (req, res) => {
 
         res.json(jobsWithExtras);
     } catch (err) {
+        console.error("Error in getJobs:", err);
         res.status(500).json({ message: err.message });
     }
 };
 
 // @desc    Get jobs for logged in user (Employer can see posted jobs)
+// FIXED VERSION
 exports.getJobsEmployer = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const { role } = req.user;
-
-        if (role !== "employer") {
-            return res.status(403).json({ message: "Access denied" });
+        console.log('[getJobsEmployer] Starting...');
+        
+        // Check if user exists
+        if (!req.user) {
+            console.log('[getJobsEmployer] No user found in request');
+            return res.status(401).json({ message: "User not authenticated" });
         }
 
-        const jobs = await Job.find({ company: userId })
-            .populate("company", "name companyName companyLogo")
+        console.log('[getJobsEmployer] User ID:', req.user._id);
+        console.log('[getJobsEmployer] User role:', req.user.role);
+
+        // Check if user is employer
+        if (req.user.role !== "employer") {
+            console.log('[getJobsEmployer] Access denied - role is:', req.user.role);
+            return res.status(403).json({ message: "Access denied. Employers only." });
+        }
+
+        // Get jobs for this employer - SIMPLE QUERY FIRST
+        const jobs = await Job.find({ company: req.user._id })
+            .sort({ createdAt: -1 })
             .lean();
 
-        const jobsWithApplicationCounts = await Promise.all(
-            jobs.map(async (job) => {
-                const applicationCount = await Application.countDocuments({
-                    job: job._id,
-                });
-                return {
-                    ...job,
-                    applicationCount,
-                };
-            })
-        );
+        console.log('[getJobsEmployer] Found jobs:', jobs.length);
 
-        res.json(jobsWithApplicationCounts);
+        // If no jobs, return empty array
+        if (!jobs || jobs.length === 0) {
+            console.log('[getJobsEmployer] No jobs found for this employer');
+            return res.json([]);
+        }
+
+        // Get application counts for each job
+        const jobIds = jobs.map(job => job._id);
+        
+        // Use aggregation for better performance
+        const applicationCounts = await Application.aggregate([
+            { $match: { job: { $in: jobIds } } },
+            { $group: { _id: '$job', count: { $sum: 1 } } }
+        ]);
+
+        // Create a map of jobId -> count
+        const countMap = {};
+        applicationCounts.forEach(item => {
+            countMap[item._id.toString()] = item.count;
+        });
+
+        // Format response with application counts
+        const result = jobs.map(job => {
+            const jobObj = { ...job };
+            jobObj.applicationCount = countMap[job._id.toString()] || 0;
+            
+            // Ensure company data exists (even if not populated)
+            if (!jobObj.company) {
+                jobObj.company = {
+                    name: req.user.name || "Unknown",
+                    companyName: req.user.companyName || "",
+                    companyLogo: req.user.companyLogo || ""
+                };
+            }
+            
+            return jobObj;
+        });
+
+        console.log('[getJobsEmployer] Returning:', result.length, 'jobs with counts');
+        res.json(result);
+
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('[getJobsEmployer] ERROR DETAILS:', err);
+        console.error('[getJobsEmployer] ERROR STACK:', err.stack);
+        
+        // Send detailed error response
+        res.status(500).json({ 
+            message: "Failed to fetch jobs", 
+            error: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 };
 
@@ -169,6 +218,7 @@ exports.getJobById = async (req, res) => {
             applicationStatus,
         });
     } catch (err) {
+        console.error("Error in getJobById:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -187,6 +237,7 @@ exports.updateJob = async (req, res) => {
         const updated = await job.save();
         res.json(updated);
     } catch (err) {
+        console.error("Error in updateJob:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -204,6 +255,7 @@ exports.deleteJob = async (req, res) => {
         await job.deleteOne();
         res.json({ message: "Job deleted successfully" });
     } catch (err) {
+        console.error("Error in deleteJob:", err);
         res.status(500).json({ message: err.message });
     }
 };
@@ -212,16 +264,36 @@ exports.deleteJob = async (req, res) => {
 exports.toggleCloseJob = async (req, res) => {
     try {
         const job = await Job.findById(req.params.id);
-        if (!job) return res.status(404).json({ message: "Job not found" });
-
-        if (job.company.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: "Not authorized to close this job" });
+        if (!job) {
+            return res.status(404).json({ message: "Job not found" });
         }
 
+        // Check if user owns this job
+        if (job.company.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Not authorized to modify this job" });
+        }
+
+        // Check if job is approved before allowing toggle
+        if (job.status !== "approved") {
+            return res.status(400).json({ 
+                message: `Cannot ${job.isClosed ? 'reopen' : 'close'} a job that is ${job.status}. Only approved jobs can be opened or closed.` 
+            });
+        }
+
+        // Toggle the status
         job.isClosed = !job.isClosed;
         await job.save();
-        res.json({ message: job.isClosed ? "Job marked as closed" : "Job marked as open" });
+
+        console.log(`[toggleCloseJob] Job ${job._id} ${job.isClosed ? 'closed' : 'reopened'} by employer ${req.user._id}`);
+
+        res.json({ 
+            message: job.isClosed ? "Job marked as closed" : "Job marked as open",
+            isClosed: job.isClosed,
+            jobId: job._id,
+            status: job.status
+        });
     } catch (err) {
+        console.error("Error in toggleCloseJob:", err);
         res.status(500).json({ message: err.message });
     }
 };
