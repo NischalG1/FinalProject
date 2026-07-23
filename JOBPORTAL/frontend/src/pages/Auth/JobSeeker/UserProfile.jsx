@@ -17,13 +17,12 @@ import {
   Sparkles,
   Building2,
   Clock,
-  Star,
   Target,
   Edit3,
   Eye,
   ExternalLink,
-  CheckCircle,
   AlertCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import axiosInstance from '../../../utlis/axiosinstance';
@@ -216,7 +215,6 @@ const UserProfile = () => {
     }
   };
 
-  // Profile completion percentage
   const calculateProfileCompletion = () => {
     let completed = 0;
     const fields = [
@@ -240,16 +238,19 @@ const UserProfile = () => {
   return (
     <DashboardLayout activeMenu="profile">
       <div className="space-y-6">
-        {/* Header - LinkedIn Style */}
-        <div className="bg-gradient-to-r from-[#0a66c2] to-[#004182] rounded-2xl shadow-lg p-8 text-white">
+        {/* Header - LinkedIn Green Theme */}
+        <div className="bg-gradient-to-r from-[#0A6642] to-[#085433] rounded-2xl shadow-lg p-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20">
                 <User className="w-7 h-7 text-white" />
               </div>
               <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#B8D9BF] uppercase tracking-wider mb-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Profile Management
+                </div>
                 <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
-                <p className="text-blue-100 text-sm mt-0.5">
+                <p className="text-[#B8D9BF] text-sm mt-0.5">
                   Manage your professional information
                 </p>
               </div>
@@ -282,14 +283,14 @@ const UserProfile = () => {
                     {completionPercentage}%
                   </span>
                 </div>
-                <span className="text-sm font-medium text-blue-100">
+                <span className="text-sm font-medium text-[#B8D9BF]">
                   Profile Complete
                 </span>
               </div>
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#0a66c2] rounded-xl font-semibold hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#0A6642] rounded-xl font-semibold hover:bg-[#E7F3E8] transition-all shadow-lg hover:shadow-xl"
                 >
                   <Edit3 className="w-4 h-4" />
                   Edit Profile
@@ -309,10 +310,10 @@ const UserProfile = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-6">
-            {/* Profile Picture Card - LinkedIn Style */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Camera className="w-5 h-5 text-[#0a66c2]" />
+            {/* Profile Picture Card - LinkedIn Green Theme */}
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
+              <h2 className="text-lg font-bold text-[#1D2226] mb-6 flex items-center gap-2">
+                <Camera className="w-5 h-5 text-[#0A6642]" />
                 Profile Picture
               </h2>
               <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -321,15 +322,15 @@ const UserProfile = () => {
                     <img
                       src={avatarPreview}
                       alt="Avatar"
-                      className="w-32 h-32 rounded-2xl object-cover border-4 border-gray-100 shadow-lg"
+                      className="w-32 h-32 rounded-2xl object-cover border-4 border-[#E9ECEF] shadow-lg"
                     />
                   ) : (
-                    <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center border-4 border-gray-100 shadow-lg">
-                      <User className="w-16 h-16 text-gray-400" />
+                    <div className="w-32 h-32 rounded-2xl bg-[#E7F3E8] flex items-center justify-center border-4 border-[#E9ECEF] shadow-lg">
+                      <User className="w-16 h-16 text-[#0A6642]" />
                     </div>
                   )}
                   {isEditing && (
-                    <label className="absolute bottom-0 right-0 w-10 h-10 bg-[#0a66c2] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#004182] transition-colors shadow-lg border-2 border-white">
+                    <label className="absolute bottom-0 right-0 w-10 h-10 bg-[#0A6642] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#085433] transition-colors shadow-lg border-2 border-white">
                       <Camera className="w-5 h-5 text-white" />
                       <input
                         type="file"
@@ -342,10 +343,10 @@ const UserProfile = () => {
                   )}
                 </div>
                 <div>
-                  <p className="text-gray-700 font-medium">Upload a professional photo</p>
-                  <p className="text-sm text-gray-500">JPG, PNG or GIF. Max 5MB</p>
+                  <p className="text-[#1D2226] font-medium">Upload a professional photo</p>
+                  <p className="text-sm text-[#5E6F8D]">JPG, PNG or GIF. Max 5MB</p>
                   {!isEditing && (
-                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                    <p className="text-xs text-[#5E6F8D] mt-2 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
                       Click "Edit Profile" to change your photo
                     </p>
@@ -354,29 +355,29 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Personal Information Card - LinkedIn Style */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <User className="w-5 h-5 text-[#0a66c2]" />
+            {/* Personal Information Card - LinkedIn Green Theme */}
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
+              <h2 className="text-lg font-bold text-[#1D2226] mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-[#0A6642]" />
                 Personal Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Full Name <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-[#1D2226] mb-1.5">
+                    Full Name <span className="text-[#B2405A]">*</span>
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5E6F8D] w-4 h-4" />
                     <input
                       type="text"
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className={`w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full pl-10 pr-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                       required
                     />
@@ -384,7 +385,7 @@ const UserProfile = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-[#1D2226] mb-1.5">
                     Professional Title
                   </label>
                   <select
@@ -392,10 +393,10 @@ const UserProfile = () => {
                     value={formData.title}
                     onChange={handleChange}
                     disabled={!isEditing}
-                    className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                    className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                       isEditing 
-                        ? 'focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:border-transparent' 
-                        : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                        ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                        : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                     }`}
                   >
                     {TITLES.map((title) => (
@@ -407,23 +408,23 @@ const UserProfile = () => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-[#1D2226] mb-1.5">
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#5E6F8D] w-4 h-4" />
                     <input
                       type="email"
                       value={formData.email}
                       disabled
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed text-sm"
+                      className="w-full pl-10 pr-4 py-2.5 border border-[#E9ECEF] rounded-xl bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed text-sm"
                     />
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+                  <p className="text-xs text-[#5E6F8D] mt-1">Email cannot be changed</p>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-[#1D2226] mb-1.5">
                     Bio
                   </label>
                   <textarea
@@ -432,10 +433,10 @@ const UserProfile = () => {
                     onChange={handleChange}
                     disabled={!isEditing}
                     rows={4}
-                    className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm resize-none ${
+                    className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm resize-none ${
                       isEditing 
-                        ? 'focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:border-transparent' 
-                        : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                        ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                        : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                     }`}
                     placeholder="Tell employers about yourself, your experience, and what you're looking for..."
                   />
@@ -443,26 +444,26 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Resume Card - LinkedIn Style */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#0a66c2]" />
+            {/* Resume Card - LinkedIn Green Theme */}
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
+              <h2 className="text-lg font-bold text-[#1D2226] mb-6 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#0A6642]" />
                 Resume
               </h2>
               {formData.resume ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between p-4 bg-[#F8FAFB] rounded-xl border border-[#E9ECEF]">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-[#0a66c2]" />
+                      <div className="w-12 h-12 bg-[#E7F3E8] rounded-lg flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-[#0A6642]" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Resume Uploaded</p>
+                        <p className="font-semibold text-[#1D2226] text-sm">Resume Uploaded</p>
                         <a
                           href={formData.resume}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-[#0a66c2] hover:underline flex items-center gap-1"
+                          className="text-sm text-[#0A6642] hover:underline flex items-center gap-1"
                         >
                           View Resume <ExternalLink className="w-3 h-3" />
                         </a>
@@ -472,7 +473,7 @@ const UserProfile = () => {
                       <button
                         type="button"
                         onClick={handleDeleteResume}
-                        className="flex items-center gap-1.5 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                        className="flex items-center gap-1.5 px-4 py-2 text-[#B2405A] hover:bg-[#FDE7E9] rounded-xl transition-colors text-sm font-medium"
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete
@@ -488,9 +489,9 @@ const UserProfile = () => {
                         className="hidden"
                         disabled={uploading}
                       />
-                      <div className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#0a66c2] hover:bg-blue-50 cursor-pointer transition-colors">
-                        <Upload className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-600 font-medium text-sm">Upload New Resume</span>
+                      <div className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:bg-[#E7F3E8] cursor-pointer transition-colors">
+                        <Upload className="w-5 h-5 text-[#5E6F8D]" />
+                        <span className="text-[#5E6F8D] font-medium text-sm">Upload New Resume</span>
                       </div>
                     </label>
                   )}
@@ -506,17 +507,17 @@ const UserProfile = () => {
                         className="hidden"
                         disabled={uploading}
                       />
-                      <div className="flex flex-col items-center justify-center gap-4 p-12 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#0a66c2] hover:bg-blue-50 cursor-pointer transition-colors">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Upload className="w-8 h-8 text-gray-400" />
+                      <div className="flex flex-col items-center justify-center gap-4 p-12 border-2 border-dashed border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:bg-[#E7F3E8] cursor-pointer transition-colors">
+                        <div className="w-16 h-16 bg-[#F3F6F9] rounded-full flex items-center justify-center">
+                          <Upload className="w-8 h-8 text-[#5E6F8D]" />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-gray-900 mb-1">Upload Your Resume</p>
-                          <p className="text-sm text-gray-500">PDF, DOC, or DOCX. Max 10MB</p>
+                          <p className="font-semibold text-[#1D2226] mb-1">Upload Your Resume</p>
+                          <p className="text-sm text-[#5E6F8D]">PDF, DOC, or DOCX. Max 10MB</p>
                         </div>
                         <button
                           type="button"
-                          className="px-6 py-2 bg-[#0a66c2] text-white rounded-lg font-medium hover:bg-[#004182] transition-colors text-sm"
+                          className="px-6 py-2 bg-[#0A6642] text-white rounded-xl font-medium hover:bg-[#085433] transition-colors text-sm"
                         >
                           Choose File
                         </button>
@@ -524,28 +525,28 @@ const UserProfile = () => {
                     </label>
                   ) : (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FileText className="w-8 h-8 text-gray-400" />
+                      <div className="w-16 h-16 bg-[#F3F6F9] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FileText className="w-8 h-8 text-[#5E6F8D]" />
                       </div>
-                      <p className="text-gray-500 text-sm">No resume uploaded</p>
-                      <p className="text-xs text-gray-400 mt-1">Click "Edit Profile" to upload your resume</p>
+                      <p className="text-[#5E6F8D] text-sm">No resume uploaded</p>
+                      <p className="text-xs text-[#5E6F8D] mt-1">Click "Edit Profile" to upload your resume</p>
                     </div>
                   )}
                 </div>
               )}
-              <p className="text-xs text-gray-400 mt-4">
+              <p className="text-xs text-[#5E6F8D] mt-4">
                 Having an up-to-date resume increases your chances of getting hired
               </p>
             </div>
 
-            {/* Skills & Preferences Card - LinkedIn Style */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            {/* Skills & Preferences Card - LinkedIn Green Theme */}
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
               <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-purple-600" />
+                <h2 className="text-lg font-bold text-[#1D2226] flex items-center gap-2">
+                  <Target className="w-5 h-5 text-[#0A6642]" />
                   Skills & Preferences
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm text-[#5E6F8D] mt-0.5">
                   {isEditing 
                     ? 'Update your skills and preferences for better job matches'
                     : 'Your skills and preferences for job matching'}
@@ -555,7 +556,7 @@ const UserProfile = () => {
               <div className="space-y-6">
                 {/* Skills Input */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-[#1D2226] mb-1.5">
                     Skills
                   </label>
                   {isEditing ? (
@@ -567,12 +568,12 @@ const UserProfile = () => {
                           onChange={(e) => setSkillInput(e.target.value)}
                           onKeyDown={handleSkillKeyDown}
                           placeholder="Type a skill and press Enter (e.g., React, Node.js)"
-                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="flex-1 px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent bg-white"
                         />
                         <button
                           type="button"
                           onClick={handleAddSkill}
-                          className="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          className="px-4 py-2.5 bg-[#0A6642] text-white rounded-xl hover:bg-[#085433] transition-colors"
                         >
                           <Plus className="w-5 h-5" />
                         </button>
@@ -582,13 +583,13 @@ const UserProfile = () => {
                           {formData.skills.map((skill) => (
                             <span
                               key={skill}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm font-medium border border-purple-200"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E7F3E8] text-[#0A6642] rounded-full text-sm font-medium border border-[#B8D9BF]"
                             >
                               {skill}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveSkill(skill)}
-                                className="hover:text-purple-900 transition-colors"
+                                className="hover:text-[#085433] transition-colors"
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -604,14 +605,14 @@ const UserProfile = () => {
                           {formData.skills.map((skill) => (
                             <span
                               key={skill}
-                              className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm font-medium border border-purple-200"
+                              className="px-3 py-1.5 bg-[#E7F3E8] text-[#0A6642] rounded-full text-sm font-medium border border-[#B8D9BF]"
                             >
                               {skill}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-400">No skills added yet</p>
+                        <p className="text-sm text-[#5E6F8D]">No skills added yet</p>
                       )}
                     </div>
                   )}
@@ -620,8 +621,8 @@ const UserProfile = () => {
                 {/* Category & Job Type */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-2">
-                      <Briefcase className="w-4 h-4 text-purple-600" />
+                    <label className="block text-sm font-medium text-[#1D2226] mb-1.5 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-[#0A6642]" />
                       Preferred Category
                     </label>
                     <select
@@ -629,10 +630,10 @@ const UserProfile = () => {
                       value={formData.preferredCategory}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                     >
                       <option value="">Select Category</option>
@@ -645,8 +646,8 @@ const UserProfile = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-purple-600" />
+                    <label className="block text-sm font-medium text-[#1D2226] mb-1.5 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#0A6642]" />
                       Preferred Job Type
                     </label>
                     <select
@@ -654,10 +655,10 @@ const UserProfile = () => {
                       value={formData.preferredJobType}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                     >
                       <option value="">Select Job Type</option>
@@ -673,8 +674,8 @@ const UserProfile = () => {
                 {/* Location & Experience */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-purple-600" />
+                    <label className="block text-sm font-medium text-[#1D2226] mb-1.5 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-[#0A6642]" />
                       Preferred Location
                     </label>
                     <input
@@ -684,17 +685,17 @@ const UserProfile = () => {
                       onChange={handleChange}
                       disabled={!isEditing}
                       placeholder="e.g., New York, Remote, San Francisco"
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-2">
-                      <Award className="w-4 h-4 text-purple-600" />
+                    <label className="block text-sm font-medium text-[#1D2226] mb-1.5 flex items-center gap-2">
+                      <Award className="w-4 h-4 text-[#0A6642]" />
                       Experience Level
                     </label>
                     <select
@@ -702,10 +703,10 @@ const UserProfile = () => {
                       value={formData.experienceLevel}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                     >
                       {EXPERIENCE_LEVELS.map((level) => (
@@ -719,8 +720,8 @@ const UserProfile = () => {
 
                 {/* Expected Salary */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-purple-600" />
+                  <label className="block text-sm font-medium text-[#1D2226] mb-1.5 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-[#0A6642]" />
                     Expected Salary Range
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -732,10 +733,10 @@ const UserProfile = () => {
                       disabled={!isEditing}
                       placeholder="Minimum (e.g., 50000)"
                       min="0"
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                     />
                     <input
@@ -746,10 +747,10 @@ const UserProfile = () => {
                       disabled={!isEditing}
                       placeholder="Maximum (e.g., 80000)"
                       min="0"
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm ${
+                      className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
                         isEditing 
-                          ? 'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent' 
-                          : 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                          ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
+                          : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
                       }`}
                     />
                   </div>
@@ -757,14 +758,13 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Save Button - LinkedIn Style */}
+            {/* Save Button - LinkedIn Green Theme */}
             {isEditing && (
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setIsEditing(false);
-                    // Reset form data to original user data
                     if (user) {
                       setFormData({
                         name: user.name || '',
@@ -784,14 +784,14 @@ const UserProfile = () => {
                       setAvatarPreview(user.avatar || '');
                     }
                   }}
-                  className="px-8 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                  className="px-8 py-3 border border-[#E9ECEF] text-[#1D2226] rounded-xl font-semibold hover:bg-[#F3F6F9] transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading || uploading}
-                  className="flex items-center gap-2 px-8 py-3 bg-[#0a66c2] text-white rounded-xl font-semibold hover:bg-[#004182] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                  className="flex items-center gap-2 px-8 py-3 bg-[#0A6642] text-white rounded-xl font-semibold hover:bg-[#085433] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                 >
                   {loading ? (
                     <>

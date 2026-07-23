@@ -9,6 +9,7 @@ import {
   Sparkles,
   Target,
   Rocket,
+  ShieldCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
@@ -24,8 +25,15 @@ const Hero = () => {
   ];
 
   return (
-    <section className="pt-24 pb-20 bg-[#f3f2ef] min-h-screen flex items-center">
-      <div className="container mx-auto px-4">
+    <section className="pt-24 pb-20 bg-[#F3F6F9] min-h-screen flex items-center relative overflow-hidden">
+      {/* Decorative Background - Green Theme */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-[#E7F3E8] rounded-full blur-3xl opacity-30" />
+        <div className="absolute bottom-20 right-10 w-48 h-48 bg-[#B8D9BF] rounded-full blur-3xl opacity-30" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-[#E7F3E8] to-[#B8D9BF] rounded-full blur-3xl opacity-20" />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           {/* Main Heading */}
           <motion.div
@@ -33,25 +41,28 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-200 mb-6">
-              <Sparkles className="w-4 h-4 text-[#0a66c2]" />
-              <span className="text-sm font-medium text-[#0a66c2]">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#E7F3E8] rounded-full border border-[#B8D9BF] mb-6">
+              <Sparkles className="w-4 h-4 text-[#0A6642]" />
+              <span className="text-sm font-medium text-[#0A6642]">
                 AI-Powered Job Matching
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#0A6642] uppercase tracking-wider mb-3">
+              <ShieldCheck className="w-3.5 h-3.5" /> Down2Work
+            </div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1D2226] mb-6 leading-tight">
               Find Your Dream Job or{" "}
-              <span className="block bg-gradient-to-r from-[#0a66c2] to-[#004182] bg-clip-text text-transparent mt-2">
+              <span className="block bg-gradient-to-r from-[#0A6642] to-[#085433] bg-clip-text text-transparent mt-2">
                 Perfect Hire
               </span>
             </h1>
-            <p className="text-base md:text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-xl text-[#5E6F8D] mb-12 max-w-2xl mx-auto leading-relaxed">
               Connect talented professionals with innovative companies. Your next
               career move or perfect candidate is just one click away.
             </p>
           </motion.div>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - Green Theme */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -61,7 +72,7 @@ const Hero = () => {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
-              className="group bg-[#0a66c2] text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-[#004182] transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-3"
+              className="group bg-[#0A6642] text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-[#085433] transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-3"
               onClick={() => navigate("/find-jobs")}
             >
               <Search className="w-5 h-5" />
@@ -72,7 +83,7 @@ const Hero = () => {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
-              className="bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-full font-semibold text-lg hover:border-[#0a66c2] hover:text-[#0a66c2] transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-3"
+              className="bg-white border-2 border-[#E9ECEF] text-[#5E6F8D] px-8 py-4 rounded-full font-semibold text-lg hover:border-[#0A6642] hover:text-[#0A6642] transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-3"
               onClick={() =>
                 navigate(
                   isAuthenticated && user?.role === "employer"
@@ -86,7 +97,7 @@ const Hero = () => {
             </motion.button>
           </motion.div>
 
-          {/* Stats - LinkedIn Style */}
+          {/* Stats - LinkedIn Green Theme */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -99,28 +110,21 @@ const Hero = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 + index * 0.1, duration: 0.6 }}
-                className="flex flex-col items-center space-y-2 p-6 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all"
+                className="flex flex-col items-center space-y-2 p-6 bg-white rounded-2xl shadow-sm border border-[#E9ECEF] hover:shadow-md hover:border-[#0A6642]/30 transition-all"
               >
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
-                  <stat.icon className="w-6 h-6 text-[#0a66c2]" />
+                <div className="w-12 h-12 bg-[#E7F3E8] rounded-xl flex items-center justify-center mb-2">
+                  <stat.icon className="w-6 h-6 text-[#0A6642]" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-[#1D2226]">
                   {stat.value}
                 </div>
-                <div className="text-sm text-gray-500 font-medium">
+                <div className="text-sm text-[#5E6F8D] font-medium">
                   {stat.label}
                 </div>
               </motion.div>
             ))}
           </motion.div>
         </div>
-      </div>
-
-      {/* Subtle Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-100 rounded-full blur-3xl opacity-30" />
-        <div className="absolute bottom-20 right-10 w-48 h-48 bg-purple-100 rounded-full blur-3xl opacity-35" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-blue-50 to-purple-50 rounded-full blur-3xl opacity-20" />
       </div>
     </section>
   );
