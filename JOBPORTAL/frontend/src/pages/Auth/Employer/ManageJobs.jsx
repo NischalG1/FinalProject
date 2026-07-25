@@ -26,6 +26,7 @@ import {
 import axiosInstance from '../../../utlis/axiosinstance';
 import { API_PATHS } from '../../../utlis/apiPaths';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import JobDetailsModal from '../../../components/JobDetailsModal';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 
@@ -37,6 +38,8 @@ const ManageJobs = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [closingJobId, setClosingJobId] = useState(null);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -56,7 +59,6 @@ const ManageJobs = () => {
   };
 
   const handleToggleClose = async (jobId, currentStatus) => {
-    // Check if job is approved before allowing close
     const job = jobs.find(j => j._id === jobId);
     if (job && job.status !== 'approved') {
       toast.error('Only approved jobs can be closed or reopened');
@@ -69,7 +71,7 @@ const ManageJobs = () => {
       toast.success(
         currentStatus ? 'Job reopened successfully' : 'Job closed successfully'
       );
-      await fetchJobs(); // Refresh the list
+      await fetchJobs();
     } catch (error) {
       console.error('Error toggling job status:', error);
       toast.error(error.response?.data?.message || 'Failed to update job status');
@@ -87,6 +89,27 @@ const ManageJobs = () => {
     } catch (error) {
       toast.error('Failed to delete job');
     }
+  };
+
+  // FIXED: Handle job click to open modal
+  const handleJobClick = (jobId) => {
+    setSelectedJobId(jobId);
+    setIsModalOpen(true);
+  };
+
+  // FIXED: Handle modal close - don't refresh jobs immediately
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedJobId(null);
+    // Don't call fetchJobs here to avoid interrupting navigation
+  };
+
+  // FIXED: Handle modal action - refresh jobs only when needed (save/apply actions)
+  const handleModalAction = () => {
+    // Small delay to let any navigation complete first
+    setTimeout(() => {
+      fetchJobs();
+    }, 300);
   };
 
   const filteredJobs = jobs.filter(job => {
@@ -308,7 +331,7 @@ const ManageJobs = () => {
                     </div>
                   </div>
 
-                  {/* Actions Footer - FIXED CLOSE BUTTON */}
+                  {/* Actions Footer */}
                   <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t border-[#F1F5F9]">
                     <button
                       onClick={() => navigate(`/applicants?jobId=${job._id}`)}
@@ -318,7 +341,6 @@ const ManageJobs = () => {
                       Applications ({job.applicationCount || 0})
                     </button>
                     
-                    {/* CLOSE/REOPEN BUTTON - FIXED */}
                     <button
                       onClick={() => handleToggleClose(job._id, job.isClosed)}
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-colors text-xs font-bold ${
@@ -342,11 +364,11 @@ const ManageJobs = () => {
                     </button>
                     
                     <button
-                      onClick={() => navigate(`/job/${job._id}`)}
+                      onClick={() => handleJobClick(job._id)}
                       className="flex items-center gap-1.5 px-4 py-2 bg-[#F8FAFC] text-[#475569] rounded-xl hover:bg-[#F1F5F9] transition-colors text-xs font-bold border border-[#E2E8F0]"
                     >
                       <Eye className="w-4 h-4" />
-                      View
+                      View Details
                     </button>
 
                     {/* Delete Button */}
@@ -395,6 +417,14 @@ const ManageJobs = () => {
           )}
         </div>
       </div>
+
+      {/* Job Details Modal - FIXED */}
+      <JobDetailsModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onAction={handleModalAction}
+      />
     </DashboardLayout>
   );
 };

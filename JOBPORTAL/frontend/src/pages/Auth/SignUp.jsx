@@ -105,10 +105,15 @@ const SignUp = () => {
         avatar: avatarUrl,
       });
 
-      const { token } = response.data;
+      const { user, accessToken, refreshToken } = response.data;
 
-      if (token) {
-        login(response.data, token);
+      if (accessToken && user) {
+        // Store both tokens
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        login(user, accessToken);
       }
 
       setFormState((prev) => ({
@@ -123,6 +128,7 @@ const SignUp = () => {
         window.location.href = redirectPath;
       }, 2000);
     } catch (error) {
+      console.error("Registration error:", error);
       setFormState((prev) => ({
         ...prev,
         loading: false,
@@ -249,7 +255,7 @@ const SignUp = () => {
               )}
             </div>
 
-            {/* Password - Green Theme */}
+            {/* Password - Green Theme - FIXED: Added styles to hide browser's native toggle */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-[#1D2226]">Password</label>
               <div className="relative group">
@@ -259,7 +265,7 @@ const SignUp = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`w-full pl-11 pr-12 py-3 rounded-xl border-2 bg-[#F8FAFB] transition-all outline-none text-sm ${
+                  className={`w-full pl-11 pr-12 py-3 rounded-xl border-2 bg-[#F8FAFB] transition-all outline-none text-sm [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-credentials-auto-fill-button]:invisible [&::-webkit-credentials-auto-fill-button]:pointer-events-none [&::-webkit-show-password-button]:hidden [&::-webkit-show-password-button]:invisible [&::-webkit-show-password-button]:pointer-events-none ${
                     formState.errors.password
                       ? "border-[#B2405A] focus:border-[#B2405A]"
                       : "border-[#E9ECEF] focus:border-[#0A6642] focus:bg-white"
@@ -271,7 +277,7 @@ const SignUp = () => {
                   onClick={() =>
                     setFormState((p) => ({ ...p, showPassword: !p.showPassword }))
                   }
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5E6F8D] hover:text-[#1D2226] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5E6F8D] hover:text-[#1D2226] transition-colors z-10"
                 >
                   {formState.showPassword ? (
                     <EyeOff className="w-5 h-5" />

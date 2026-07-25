@@ -1,3 +1,4 @@
+// frontend/src/pages/Auth/Login.jsx
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -74,10 +75,15 @@ const Login = () => {
         password: formData.password,
       });
 
-      const { user, token } = response.data;
+      const { user, accessToken, refreshToken } = response.data;
 
-      if (token && user) {
-        login(user, token);
+      if (accessToken && user) {
+        // Store both tokens
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        login(user, accessToken);
 
         setFormState((prev) => ({
           ...prev,
@@ -206,7 +212,7 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`w-full pl-11 pr-12 py-3 rounded-xl border-2 bg-[#F8FAFB] transition-all outline-none text-sm ${
+                  className={`w-full pl-11 pr-12 py-3 rounded-xl border-2 bg-[#F8FAFB] transition-all outline-none text-sm [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-credentials-auto-fill-button]:invisible [&::-webkit-credentials-auto-fill-button]:pointer-events-none [&::-webkit-show-password-button]:hidden [&::-webkit-show-password-button]:invisible [&::-webkit-show-password-button]:pointer-events-none ${
                     formState.errors.password
                       ? "border-[#B2405A] focus:border-[#B2405A]"
                       : "border-[#E9ECEF] focus:border-[#0A6642] focus:bg-white"
@@ -218,7 +224,7 @@ const Login = () => {
                   onClick={() =>
                     setFormState((p) => ({ ...p, showPassword: !p.showPassword }))
                   }
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5E6F8D] hover:text-[#1D2226] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5E6F8D] hover:text-[#1D2226] transition-colors z-10"
                 >
                   {formState.showPassword ? (
                     <EyeOff className="w-5 h-5" />

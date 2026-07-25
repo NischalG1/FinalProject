@@ -22,6 +22,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { JOB_TYPES, CATEGORIES } from '../../../utlis/data';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import MatchScoreBadge, { MatchDetails } from '../../../components/ui/MatchScoreBadge';
+import JobDetailsModal from '../../../components/JobDetailsModal';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 
@@ -40,6 +41,8 @@ const FindJobs = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('recent');
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -105,6 +108,11 @@ const FindJobs = () => {
   };
 
   const hasActiveFilters = Object.values(filters).some(value => value !== '');
+
+  const handleJobClick = (jobId) => {
+    setSelectedJobId(jobId);
+    setIsModalOpen(true);
+  };
 
   if (authLoading) {
     return (
@@ -327,7 +335,7 @@ const FindJobs = () => {
               <div
                 key={job._id}
                 className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6 hover:shadow-md hover:border-[#0A6642]/30 transition-all cursor-pointer group"
-                onClick={() => navigate(`/job/${job._id}`)}
+                onClick={() => handleJobClick(job._id)}
               >
                 <div className="flex flex-col md:flex-row md:items-start gap-4">
                   {/* Company Logo */}
@@ -433,6 +441,19 @@ const FindJobs = () => {
           </div>
         )}
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJobId(null);
+        }}
+        onAction={() => {
+          fetchJobs();
+        }}
+      />
     </DashboardLayout>
   );
 };

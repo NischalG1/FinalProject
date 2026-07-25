@@ -8,6 +8,7 @@ const {
     deleteJob,
     toggleCloseJob,
     getJobsEmployer,
+    getJobsByCompany, // Add this import
 } = require("../controllers/jobController");
 const { protect } = require("../middlewares/authMiddleware");
 
@@ -20,6 +21,9 @@ router.route("/get-jobs-employer").get(protect, getJobsEmployer);
 // Public routes
 router.route("/").get(getJobs);
 router.route("/:id").get(getJobById);
+
+// Public route - Get jobs by company
+router.get("/company/:companyId", getJobsByCompany); // Add this
 
 // Protected employer routes
 router.route("/").post(protect, createJob);

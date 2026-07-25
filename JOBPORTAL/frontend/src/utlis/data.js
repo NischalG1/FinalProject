@@ -82,6 +82,7 @@ export const JOBSEEKER_NAVIGATION_MENU = [
   { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
   { id: "find-jobs", name: "Find Jobs", icon: Search },
   { id: "saved-jobs", name: "Saved Jobs", icon: FileText },
+  { id: "accepted-jobs", name: "Accepted Jobs", icon: Award }, // Add this
   { id: "profile", name: "Profile", icon: UserCheck },
 ];
 

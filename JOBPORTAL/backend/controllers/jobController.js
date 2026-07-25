@@ -3,6 +3,7 @@ const Job = require("../models/Jobs");
 const User = require("../models/User");
 const Application = require("../models/Application");
 const SavedJob = require("../models/SavedJobs");
+const { createNotification } = require("./notificationController");
 
 // @desc    Create a new job (Employer only)
 exports.createJob = async (req, res) => {
@@ -28,12 +29,49 @@ exports.createJob = async (req, res) => {
             company: job.company
         });
 
+        // Create notification for all admins
+        const admins = await User.find({ role: "admin" }).select("_id");
+        for (const admin of admins) {
+            await createNotification({
+                recipient: admin._id,
+                sender: req.user._id,
+                type: "job_posted",
+                title: "New Job Pending Approval 📋",
+                message: `${req.user.companyName || req.user.name} has posted "${job.title}" and it's waiting for review.`,
+                link: `/admin-jobs`,
+                priority: "high",
+                data: {
+                    jobId: job._id,
+                    jobTitle: job.title,
+                    companyName: req.user.companyName || req.user.name,
+                    companyId: req.user._id,
+                }
+            });
+        }
+
+        // Notify the employer that their job is pending
+        await createNotification({
+            recipient: req.user._id,
+            sender: req.user._id,
+            type: "job_posted",
+            title: "Job Posted Successfully! 📝",
+            message: `Your job "${job.title}" has been posted and is pending admin approval. You'll be notified once it's approved.`,
+            link: `/manage-jobs`,
+            priority: "medium",
+            data: {
+                jobId: job._id,
+                jobTitle: job.title,
+                status: "pending",
+            }
+        });
+
         res.status(201).json(job);
     } catch (err) {
         console.error("Error creating job:", err);
         res.status(500).json({ message: err.message });
     }
 };
+
 
 // @desc    Get all jobs with filters and user status
 exports.getJobs = async (req, res) => {
@@ -72,7 +110,7 @@ exports.getJobs = async (req, res) => {
     try {
         const jobs = await Job.find(query).populate(
             "company",
-            "name companyName companyLogo"
+            "name companyName companyLogo email avatar"
         );
 
         let savedJobIds = [];
@@ -105,12 +143,10 @@ exports.getJobs = async (req, res) => {
 };
 
 // @desc    Get jobs for logged in user (Employer can see posted jobs)
-// FIXED VERSION
 exports.getJobsEmployer = async (req, res) => {
     try {
         console.log('[getJobsEmployer] Starting...');
         
-        // Check if user exists
         if (!req.user) {
             console.log('[getJobsEmployer] No user found in request');
             return res.status(401).json({ message: "User not authenticated" });
@@ -119,46 +155,38 @@ exports.getJobsEmployer = async (req, res) => {
         console.log('[getJobsEmployer] User ID:', req.user._id);
         console.log('[getJobsEmployer] User role:', req.user.role);
 
-        // Check if user is employer
         if (req.user.role !== "employer") {
             console.log('[getJobsEmployer] Access denied - role is:', req.user.role);
             return res.status(403).json({ message: "Access denied. Employers only." });
         }
 
-        // Get jobs for this employer - SIMPLE QUERY FIRST
         const jobs = await Job.find({ company: req.user._id })
             .sort({ createdAt: -1 })
             .lean();
 
         console.log('[getJobsEmployer] Found jobs:', jobs.length);
 
-        // If no jobs, return empty array
         if (!jobs || jobs.length === 0) {
             console.log('[getJobsEmployer] No jobs found for this employer');
             return res.json([]);
         }
 
-        // Get application counts for each job
         const jobIds = jobs.map(job => job._id);
         
-        // Use aggregation for better performance
         const applicationCounts = await Application.aggregate([
             { $match: { job: { $in: jobIds } } },
             { $group: { _id: '$job', count: { $sum: 1 } } }
         ]);
 
-        // Create a map of jobId -> count
         const countMap = {};
         applicationCounts.forEach(item => {
             countMap[item._id.toString()] = item.count;
         });
 
-        // Format response with application counts
         const result = jobs.map(job => {
             const jobObj = { ...job };
             jobObj.applicationCount = countMap[job._id.toString()] || 0;
             
-            // Ensure company data exists (even if not populated)
             if (!jobObj.company) {
                 jobObj.company = {
                     name: req.user.name || "Unknown",
@@ -177,7 +205,6 @@ exports.getJobsEmployer = async (req, res) => {
         console.error('[getJobsEmployer] ERROR DETAILS:', err);
         console.error('[getJobsEmployer] ERROR STACK:', err.stack);
         
-        // Send detailed error response
         res.status(500).json({ 
             message: "Failed to fetch jobs", 
             error: err.message,
@@ -187,13 +214,17 @@ exports.getJobsEmployer = async (req, res) => {
 };
 
 // @desc    Get single job by ID
+// backend/controllers/jobController.js
+// Update the getJobById function to include avatar
+
+// @desc    Get single job by ID
 exports.getJobById = async (req, res) => {
     try {
         const { userId } = req.query;
 
         const job = await Job.findById(req.params.id).populate(
             "company",
-            "name companyName companyLogo"
+            "name companyName companyLogo email avatar companyDescription companyWebsite companyLocation companyPhone companySize industry foundedYear"
         );
 
         if (!job) {
@@ -233,8 +264,47 @@ exports.updateJob = async (req, res) => {
             return res.status(403).json({ message: "Not authorized to update this job" });
         }
 
+        // Store old status for notification
+        const oldStatus = job.status;
+
         Object.assign(job, req.body);
         const updated = await job.save();
+
+        // If status changed from pending, notify relevant parties
+        if (oldStatus !== updated.status) {
+            if (updated.status === "approved") {
+                await createNotification({
+                    recipient: updated.company,
+                    sender: req.user._id,
+                    type: "job_approved",
+                    title: "Job Approved! 🎉",
+                    message: `Your job "${updated.title}" has been approved and is now live.`,
+                    link: `/manage-jobs`,
+                    priority: "high",
+                    data: {
+                        jobId: updated._id,
+                        jobTitle: updated.title,
+                        status: updated.status,
+                    }
+                });
+            } else if (updated.status === "rejected") {
+                await createNotification({
+                    recipient: updated.company,
+                    sender: req.user._id,
+                    type: "job_rejected",
+                    title: "Job Update",
+                    message: `Your job "${updated.title}" was not approved. Please review and resubmit.`,
+                    link: `/manage-jobs`,
+                    priority: "high",
+                    data: {
+                        jobId: updated._id,
+                        jobTitle: updated.title,
+                        status: updated.status,
+                    }
+                });
+            }
+        }
+
         res.json(updated);
     } catch (err) {
         console.error("Error in updateJob:", err);
@@ -252,6 +322,21 @@ exports.deleteJob = async (req, res) => {
             return res.status(403).json({ message: "Not authorized to delete this job" });
         }
 
+        // Notify the employer that their job was deleted
+        await createNotification({
+            recipient: req.user._id,
+            sender: req.user._id,
+            type: "system",
+            title: "Job Deleted",
+            message: `Your job "${job.title}" has been deleted.`,
+            link: `/manage-jobs`,
+            priority: "medium",
+            data: {
+                jobId: job._id,
+                jobTitle: job.title,
+            }
+        });
+
         await job.deleteOne();
         res.json({ message: "Job deleted successfully" });
     } catch (err) {
@@ -268,21 +353,35 @@ exports.toggleCloseJob = async (req, res) => {
             return res.status(404).json({ message: "Job not found" });
         }
 
-        // Check if user owns this job
         if (job.company.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: "Not authorized to modify this job" });
         }
 
-        // Check if job is approved before allowing toggle
         if (job.status !== "approved") {
             return res.status(400).json({ 
                 message: `Cannot ${job.isClosed ? 'reopen' : 'close'} a job that is ${job.status}. Only approved jobs can be opened or closed.` 
             });
         }
 
-        // Toggle the status
         job.isClosed = !job.isClosed;
         await job.save();
+
+        // Notify the employer about the status change
+        const statusMessage = job.isClosed ? "closed" : "reopened";
+        await createNotification({
+            recipient: req.user._id,
+            sender: req.user._id,
+            type: "system",
+            title: job.isClosed ? "Job Closed" : "Job Reopened",
+            message: `Your job "${job.title}" has been ${statusMessage} for applications.`,
+            link: `/manage-jobs`,
+            priority: "low",
+            data: {
+                jobId: job._id,
+                jobTitle: job.title,
+                isClosed: job.isClosed,
+            }
+        });
 
         console.log(`[toggleCloseJob] Job ${job._id} ${job.isClosed ? 'closed' : 'reopened'} by employer ${req.user._id}`);
 
@@ -294,6 +393,34 @@ exports.toggleCloseJob = async (req, res) => {
         });
     } catch (err) {
         console.error("Error in toggleCloseJob:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// backend/controllers/jobController.js
+// Add this function at the end of the file
+
+// @desc    Get jobs by company ID (Public)
+// @route   GET /api/jobs/company/:companyId
+// @access  Public
+exports.getJobsByCompany = async (req, res) => {
+    try {
+        const { companyId } = req.params;
+        
+        // Find all jobs posted by this company that are approved and open
+        const jobs = await Job.find({ 
+            company: companyId,
+            status: "approved",
+            isClosed: false
+        })
+        .select("title location type category salaryMin salaryMax isClosed createdAt")
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+
+        res.json(jobs);
+    } catch (err) {
+        console.error("Error in getJobsByCompany:", err);
         res.status(500).json({ message: err.message });
     }
 };

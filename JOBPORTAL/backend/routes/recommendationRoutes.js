@@ -1,13 +1,18 @@
 // backend/routes/recommendationRoutes.js
 const express = require("express");
-const { getRecommendedJobs } = require("../controllers/recommendationController");
+const { 
+  getRecommendedJobs,
+  getSimilarJobs,
+  getCollaborativeRecommendations,
+  clearRecommendationCache
+} = require("../controllers/recommendationController");
 const { protect } = require("../middlewares/authMiddleware");
 const CacheService = require("../services/cache/CacheService");
 
 const router = express.Router();
 
-// GET /api/jobs/recommendations with caching middleware
-router.get("/recommendations", protect, async (req, res, next) => {
+// GET /api/recommendations - Main recommendations endpoint
+router.get("/", protect, async (req, res, next) => {
     try {
         // Check if user has cached recommendations
         const cacheKey = CacheService.getRecommendationKey(req.user._id);
@@ -26,5 +31,14 @@ router.get("/recommendations", protect, async (req, res, next) => {
         next();
     }
 }, getRecommendedJobs);
+
+// GET /api/recommendations/similar/:jobId - Similar jobs
+router.get("/similar/:jobId", getSimilarJobs);
+
+// GET /api/recommendations/collaborative - Collaborative recommendations
+router.get("/collaborative", protect, getCollaborativeRecommendations);
+
+// POST /api/recommendations/clear-cache - Clear recommendation cache
+router.post("/clear-cache", protect, clearRecommendationCache);
 
 module.exports = router;

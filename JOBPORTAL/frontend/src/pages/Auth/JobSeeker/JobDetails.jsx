@@ -17,12 +17,18 @@ import {
   Award,
   Share2,
   ChevronRight,
+  ExternalLink,
+  Mail,
+  Phone,
+  Globe,
+  User,
 } from 'lucide-react';
 import axiosInstance from '../../../utlis/axiosinstance';
 import { API_PATHS } from '../../../utlis/apiPaths';
 import { useAuth } from '../../../context/AuthContext';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import MatchScoreBadge from '../../../components/ui/MatchScoreBadge';
+import EmployerProfileView from '../../../components/EmployerProfileView';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 
@@ -35,6 +41,7 @@ const JobDetails = () => {
   const [applying, setApplying] = useState(false);
   const [similarJobs, setSimilarJobs] = useState([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [showEmployerProfile, setShowEmployerProfile] = useState(false);
 
   useEffect(() => {
     if (jobId) {
@@ -174,6 +181,12 @@ const JobDetails = () => {
     );
   }
 
+  // Get company data safely
+  const company = job.company || {};
+  const companyAvatar = company.avatar || '';
+  const companyLogo = company.companyLogo || '';
+  const companyName = company.companyName || company.name || '';
+
   return (
     <DashboardLayout activeMenu="find-jobs">
       <div className="space-y-6">
@@ -191,18 +204,34 @@ const JobDetails = () => {
           {/* Header Section */}
           <div className="p-8 border-b border-[#E9ECEF]">
             <div className="flex flex-col md:flex-row md:items-start gap-6">
-              {/* Company Logo */}
-              {job.company?.companyLogo ? (
-                <img
-                  src={job.company.companyLogo}
-                  alt={job.company.companyName || job.company.name}
-                  className="w-20 h-20 rounded-xl object-cover border border-[#E9ECEF] shrink-0"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-xl bg-[#E7F3E8] flex items-center justify-center shrink-0">
-                  <Building2 className="w-10 h-10 text-[#0A6642]" />
-                </div>
-              )}
+              {/* Profile Avatar and Company Logo */}
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Profile Avatar (Circle) */}
+                {companyAvatar ? (
+                  <img
+                    src={companyAvatar}
+                    alt={companyName}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-[#E9ECEF]"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-[#E7F3E8] flex items-center justify-center border-2 border-[#E9ECEF]">
+                    <User className="w-6 h-6 text-[#0A6642]" />
+                  </div>
+                )}
+                
+                {/* Company Logo (Square) */}
+                {companyLogo ? (
+                  <img
+                    src={companyLogo}
+                    alt={companyName}
+                    className="w-20 h-20 rounded-xl object-cover border border-[#E9ECEF] shrink-0"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-[#E7F3E8] flex items-center justify-center border border-[#E9ECEF] shrink-0">
+                    <Building2 className="w-10 h-10 text-[#0A6642]" />
+                  </div>
+                )}
+              </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-start gap-3 mb-2">
@@ -214,9 +243,19 @@ const JobDetails = () => {
                   )}
                 </div>
 
-                <p className="text-lg font-medium text-[#5E6F8D] mb-3">
-                  {job.company?.companyName || job.company?.name}
-                </p>
+                {/* Company Name with View Profile Button */}
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-lg font-medium text-[#5E6F8D]">
+                    {companyName}
+                  </p>
+                  <button
+                    onClick={() => setShowEmployerProfile(true)}
+                    className="text-xs text-[#0A6642] hover:text-[#085433] flex items-center gap-1 font-medium hover:underline transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    View Company Profile
+                  </button>
+                </div>
 
                 <div className="flex flex-wrap gap-3 text-sm text-[#5E6F8D]">
                   {job.location && (
@@ -267,6 +306,60 @@ const JobDetails = () => {
                     )}
                   </div>
                 )}
+
+                {/* Quick Employer Info */}
+                <div className="flex flex-wrap items-center gap-3 mt-3 p-3 bg-[#F8FAFB] rounded-xl border border-[#E9ECEF]">
+                  {company.companyLocation && (
+                    <span className="flex items-center gap-1.5 text-xs text-[#5E6F8D]">
+                      <MapPin className="w-3.5 h-3.5 text-[#94A3B8]" />
+                      {company.companyLocation}
+                    </span>
+                  )}
+                  {company.industry && (
+                    <span className="flex items-center gap-1.5 text-xs text-[#5E6F8D]">
+                      <Award className="w-3.5 h-3.5 text-[#94A3B8]" />
+                      {company.industry}
+                    </span>
+                  )}
+                  {company.companySize && (
+                    <span className="flex items-center gap-1.5 text-xs text-[#5E6F8D]">
+                      <Users className="w-3.5 h-3.5 text-[#94A3B8]" />
+                      {company.companySize} employees
+                    </span>
+                  )}
+                  {company.companyWebsite && (
+                    <a
+                      href={company.companyWebsite}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-[#0A6642] hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      Website
+                    </a>
+                  )}
+                  {company.companyPhone && (
+                    <a
+                      href={`tel:${company.companyPhone}`}
+                      className="flex items-center gap-1.5 text-xs text-[#0A6642] hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Contact
+                    </a>
+                  )}
+                  {company.email && (
+                    <a
+                      href={`mailto:${company.email}`}
+                      className="flex items-center gap-1.5 text-xs text-[#0A6642] hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Email
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -382,7 +475,7 @@ const JobDetails = () => {
           </div>
         </div>
 
-        {/* Similar Jobs Section - LinkedIn Green Theme */}
+        {/* Similar Jobs Section */}
         {similarJobs.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] overflow-hidden">
             <div className="p-6 border-b border-[#E9ECEF]">
@@ -469,6 +562,13 @@ const JobDetails = () => {
           </div>
         )}
       </div>
+
+      {/* Employer Profile View Modal */}
+      <EmployerProfileView
+        employerId={company._id}
+        isOpen={showEmployerProfile}
+        onClose={() => setShowEmployerProfile(false)}
+      />
     </DashboardLayout>
   );
 };

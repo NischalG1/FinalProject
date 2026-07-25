@@ -30,6 +30,7 @@ const AdminUsersManagement = () => {
       const response = await axiosInstance.get(API_PATHS.ADMIN.GET_ALL_USERS);
       let usersData = response.data || [];
 
+      // Normalize user data - ensure all fields exist
       usersData = usersData.map((user) => ({
         ...user,
         name: user.name || "Unknown",
@@ -39,16 +40,21 @@ const AdminUsersManagement = () => {
         applicationCount: user.applicationCount || 0,
         createdAt: user.createdAt || new Date(),
         companyName: user.companyName || "",
+        avatar: user.avatar || "",
       }));
 
-      if (filter !== "all") {
-        usersData = usersData.filter((user) => user.role === filter);
-      }
+      console.log('📊 All users:', usersData); // Debug log
+      console.log('📊 Users by role:', {
+        jobseekers: usersData.filter(u => u.role === "jobseeker").length,
+        employers: usersData.filter(u => u.role === "employer").length,
+        admins: usersData.filter(u => u.role === "admin").length,
+      });
 
       setUsers(usersData);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error(error.response?.data?.message || "Failed to load users");
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +62,7 @@ const AdminUsersManagement = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [filter]);
+  }, []);
 
   const handleDeleteUser = async (userId, userName) => {
     if (!window.confirm(`Remove "${userName}"? This cannot be undone.`)) return;
@@ -93,18 +99,37 @@ const AdminUsersManagement = () => {
     return badges[role] || badges.jobseeker;
   };
 
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.companyName && user.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter users based on search term and role filter
+  const getFilteredUsers = () => {
+    let filtered = users;
 
+    // Apply role filter
+    if (filter !== "all") {
+      filtered = filtered.filter((user) => user.role === filter);
+    }
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((user) =>
+        user.name.toLowerCase().includes(term) ||
+        user.email.toLowerCase().includes(term) ||
+        (user.companyName && user.companyName.toLowerCase().includes(term))
+      );
+    }
+
+    return filtered;
+  };
+
+  // Calculate stats correctly
   const stats = {
     total: users.length,
     jobseekers: users.filter((u) => u.role === "jobseeker").length,
     employers: users.filter((u) => u.role === "employer").length,
     admins: users.filter((u) => u.role === "admin").length,
   };
+
+  const filteredUsers = getFilteredUsers();
 
   if (isLoading) {
     return (
@@ -144,7 +169,7 @@ const AdminUsersManagement = () => {
               </div>
             </div>
 
-            {/* Metrics Analytics Grid */}
+            {/* Metrics Analytics Grid - FIXED STATS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
               <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0]">
                 <p className="text-2xl font-bold text-[#0F172A] tracking-tight">{stats.total}</p>
@@ -164,28 +189,28 @@ const AdminUsersManagement = () => {
               </div>
             </div>
 
-            {/* Filter segments component */}
+            {/* Filter segments component - FIXED STATS */}
             <div className="flex flex-wrap gap-1.5 mt-6 bg-slate-50 border border-[#E2E8F0] rounded-xl p-1.5 max-w-xl">
               {[
-                { value: "all", label: "All Users" },
-                { value: "jobseeker", label: "Job Seekers" },
-                { value: "employer", label: "Employers" },
-                { value: "admin", label: "Admins" },
+                { value: "all", label: "All Users", count: stats.total },
+                { value: "jobseeker", label: "Job Seekers", count: stats.jobseekers },
+                { value: "employer", label: "Employers", count: stats.employers },
+                { value: "admin", label: "Admins", count: stats.admins },
               ].map((tab) => (
                 <button
                   key={tab.value}
                   onClick={() => setFilter(tab.value)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-2 ${
                     filter === tab.value
                       ? "bg-[#047857] text-white shadow-sm"
                       : "text-[#475569] hover:text-[#0F172A] hover:bg-white"
                   }`}
                 >
                   {tab.label}
-                  <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold ${
+                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-extrabold ${
                     filter === tab.value ? "bg-white/20 text-white" : "bg-slate-200 text-[#475569]"
                   }`}>
-                    {tab.value === "all" ? stats.total : stats[tab.value + "s"] || 0}
+                    {tab.count}
                   </span>
                 </button>
               ))}
@@ -200,8 +225,16 @@ const AdminUsersManagement = () => {
               </div>
               <h3 className="text-base font-bold text-[#0F172A] mb-1">No profiles matched</h3>
               <p className="text-[#475569] text-sm">
-                No verified accounts matching filter parameters were located.
+                {searchTerm ? `No users found matching "${searchTerm}"` : 'No verified accounts matching filter parameters were located.'}
               </p>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="mt-4 text-sm text-[#047857] hover:text-[#065f46] font-semibold"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -223,7 +256,7 @@ const AdminUsersManagement = () => {
                         ) : (
                           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#047857] to-[#065f46] flex items-center justify-center shadow-sm shrink-0">
                             <span className="text-white font-bold text-sm">
-                              {user.name?.charAt(0).toUpperCase()}
+                              {user.name?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           </div>
                         )}

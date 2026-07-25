@@ -17,6 +17,7 @@ import { API_PATHS } from "../../../utlis/apiPaths";
 import DashboardLayout from "../../../components/layout/DashboardLayout";
 import LoadingSpinner from "../../../components/layout/LoadingSpinner";
 import toast from "react-hot-toast";
+import moment from "moment";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -41,13 +42,15 @@ const AdminDashboard = () => {
     try {
       setIsLoading(true);
       
-      const [usersRes, jobsRes] = await Promise.all([
+      const [usersRes, jobsRes, activityRes] = await Promise.all([
         axiosInstance.get(API_PATHS.ADMIN.GET_ALL_USERS),
         axiosInstance.get(API_PATHS.ADMIN.GET_ALL_JOBS),
+        axiosInstance.get(API_PATHS.ADMIN.GET_RECENT_ACTIVITY).catch(() => ({ data: [] })), // Fallback if endpoint fails
       ]);
 
       const users = usersRes?.data || [];
       const jobs = jobsRes?.data || [];
+      const activities = activityRes?.data || [];
 
       setStats({
         totalUsers: users.length,
@@ -60,16 +63,80 @@ const AdminDashboard = () => {
         rejectedJobs: jobs.filter(j => j?.status === "rejected").length,
       });
 
-      setRecentActivity([
-        { id: 1, type: "job", action: "New job posted", user: "TechCorp", time: "2m ago" },
-        { id: 2, type: "user", action: "New user registered", user: "John Doe", time: "15m ago" },
-        { id: 3, type: "job", action: "Job approved", user: "Startup Inc", time: "1h ago" },
-        { id: 4, type: "user", action: "User updated profile", user: "Jane Smith", time: "2h ago" },
-        { id: 5, type: "job", action: "Job rejected", user: "OldCompany", time: "3h ago" },
-      ]);
+      // Format activities for display
+      const formattedActivities = activities.map(activity => {
+        let timeAgo = moment(activity.timestamp).fromNow();
+        let displayName = activity.user || "Unknown";
+        let actionText = activity.action || "Activity";
+        
+        // Add extra context based on type
+        if (activity.type === "job" && activity.jobTitle) {
+          actionText = `${activity.action}: "${activity.jobTitle}"`;
+        }
+        if (activity.type === "application" && activity.status) {
+          actionText = `${activity.action} (${activity.status})`;
+        }
+        
+        return {
+          id: activity.id,
+          type: activity.type || "activity",
+          action: actionText,
+          user: displayName,
+          time: timeAgo,
+          rawTime: activity.timestamp,
+          role: activity.role || "",
+          status: activity.status || "",
+          email: activity.email || "",
+          avatar: activity.avatar || "",
+        };
+      });
+
+      // If no activities from API, use fallback with real data
+      if (formattedActivities.length === 0) {
+        // Create fallback activities from real data
+        const fallbackActivities = [];
+        
+        // Add recent users as activities
+        users.slice(0, 5).forEach(user => {
+          fallbackActivities.push({
+            id: `user_${user._id}`,
+            type: "user",
+            action: `New ${user.role || 'user'} registered`,
+            user: user.name || "Unknown",
+            time: moment(user.createdAt).fromNow(),
+            rawTime: user.createdAt,
+            role: user.role,
+            email: user.email,
+            avatar: user.avatar,
+          });
+        });
+
+        // Add recent jobs as activities
+        jobs.slice(0, 5).forEach(job => {
+          const companyName = job.company?.companyName || job.company?.name || "Unknown Company";
+          fallbackActivities.push({
+            id: `job_${job._id}`,
+            type: "job",
+            action: `${job.status === 'pending' ? 'New job pending' : job.status === 'approved' ? 'Job approved' : 'Job posted'}`,
+            user: companyName,
+            time: moment(job.createdAt).fromNow(),
+            rawTime: job.createdAt,
+            status: job.status,
+            jobTitle: job.title,
+          });
+        });
+
+        // Sort by time and take top 10
+        fallbackActivities.sort((a, b) => new Date(b.rawTime) - new Date(a.rawTime));
+        setRecentActivity(fallbackActivities.slice(0, 10));
+      } else {
+        setRecentActivity(formattedActivities);
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error(error.response?.data?.message || "Failed to load dashboard metrics");
+      // Set empty activities on error
+      setRecentActivity([]);
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +156,30 @@ const AdminDashboard = () => {
     ? Math.round((stats.approvedJobs / stats.totalJobs) * 100) 
     : 0;
 
+  // Helper function to get icon based on activity type
+  const getActivityIcon = (type) => {
+    switch(type) {
+      case 'user': return <UserCheck className="w-4 h-4 text-[#047857]" />;
+      case 'job': return <Briefcase className="w-4 h-4 text-[#047857]" />;
+      case 'application': return <Activity className="w-4 h-4 text-[#047857]" />;
+      default: return <Activity className="w-4 h-4 text-[#047857]" />;
+    }
+  };
+
+  // Helper function to get badge color based on status
+  const getStatusBadge = (type, status) => {
+    if (type === 'job') {
+      if (status === 'pending') return 'bg-amber-50 text-amber-700 border-amber-200';
+      if (status === 'approved') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      if (status === 'rejected') return 'bg-rose-50 text-rose-700 border-rose-200';
+    }
+    if (type === 'user') {
+      if (status === 'employer') return 'bg-blue-50 text-blue-700 border-blue-200';
+      if (status === 'admin') return 'bg-purple-50 text-purple-700 border-purple-200';
+    }
+    return 'bg-slate-50 text-slate-600 border-slate-200';
+  };
+
   return (
     <DashboardLayout activeMenu="admin-dashboard">
       <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 lg:px-8 font-sans text-[#0F172A]">
@@ -101,7 +192,9 @@ const AdminDashboard = () => {
                 <ShieldCheck className="w-3.5 h-3.5" /> Core Security Console
               </div>
               <h1 className="text-2xl font-bold text-[#0F172A]">Admin Dashboard</h1>
-              <p className="text-sm text-[#475569] mt-0.5">Manage network members, evaluate incoming positions, and track activity streams.</p>
+              <p className="text-sm text-[#475569] mt-0.5">
+                Manage network members, evaluate incoming positions, and track activity streams.
+              </p>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-[#047857]/10 rounded-xl self-start sm:self-auto text-xs font-semibold text-[#047857] border border-[#047857]/20">
               <span className="w-2 h-2 bg-[#047857] rounded-full animate-pulse"></span>
@@ -187,30 +280,65 @@ const AdminDashboard = () => {
           {/* Split Panel System Grid Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* System Audit Action Changes Log */}
+            {/* System Audit Action Changes Log - Now with Real Data */}
             <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3.5 mb-3">
                 <h2 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-2">
                   <Activity className="w-4 h-4 text-[#047857]" /> Recent Account Activities
                 </h2>
-                <button className="text-xs font-semibold text-[#475569] hover:text-[#0F172A] px-2.5 py-1 bg-slate-50 border border-[#E2E8F0] rounded-lg transition-colors">
-                  View full ledger
+                <button 
+                  onClick={() => fetchDashboardData()}
+                  className="text-xs font-semibold text-[#475569] hover:text-[#0F172A] px-2.5 py-1 bg-slate-50 border border-[#E2E8F0] rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <Activity className="w-3 h-3" />
+                  Refresh
                 </button>
               </div>
 
-              <div className="divide-y divide-[#F1F5F9]">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between py-3.5 text-sm group hover:bg-[#F8FAFC]/50 px-2 -mx-2 rounded-xl transition-colors">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[#0F172A]">{activity.action}</p>
-                      <p className="text-xs text-[#475569] mt-0.5">
-                        Actor: <span className="text-[#047857] hover:underline cursor-pointer font-medium">{activity.user}</span>
-                      </p>
-                    </div>
-                    <span className="text-xs text-[#475569] ml-4 shrink-0 font-medium bg-slate-100 px-2 py-0.5 rounded-md">{activity.time}</span>
+              {recentActivity.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Activity className="w-8 h-8 text-[#94A3B8]" />
                   </div>
-                ))}
-              </div>
+                  <p className="text-sm text-[#475569] font-medium">No recent activity</p>
+                  <p className="text-xs text-[#94A3B8] mt-1">New activities will appear here as they happen</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#F1F5F9]">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between py-3.5 text-sm group hover:bg-[#F8FAFC]/50 px-2 -mx-2 rounded-xl transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Activity Icon */}
+                        <div className="w-8 h-8 rounded-lg bg-[#047857]/10 border border-[#047857]/20 flex items-center justify-center shrink-0">
+                          {getActivityIcon(activity.type)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[#0F172A] group-hover:text-[#047857] transition-colors text-sm truncate">
+                            {activity.action}
+                          </p>
+                          <p className="text-xs text-[#475569] mt-0.5 flex items-center gap-2">
+                            <span className="font-medium">Actor:</span>
+                            <span className="text-[#047857] font-medium truncate">{activity.user}</span>
+                            {activity.role && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${getStatusBadge(activity.type, activity.role)}`}>
+                                {activity.role}
+                              </span>
+                            )}
+                            {activity.status && activity.type === 'job' && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${getStatusBadge(activity.type, activity.status)}`}>
+                                {activity.status}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-[#475569] font-medium bg-slate-50 px-2 py-0.5 rounded-md border border-[#E2E8F0] shrink-0 ml-2">
+                        {activity.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Quick Fast-Action Platform Navigation Shortcuts */}

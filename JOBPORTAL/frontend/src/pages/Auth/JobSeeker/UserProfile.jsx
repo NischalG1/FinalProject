@@ -55,6 +55,7 @@ const UserProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [skillInput, setSkillInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
 
   const EXPERIENCE_LEVELS = [
     { value: '', label: 'Select Experience Level' },
@@ -80,9 +81,57 @@ const UserProfile = () => {
     { value: 'Business Analyst', label: 'Business Analyst' },
   ];
 
+  // Calculate profile completion - FIXED VERSION
+  const calculateProfileCompletion = (data) => {
+    // Define all fields that contribute to profile completion
+    const fields = {
+      // Personal Information (25%)
+      name: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      avatar: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      bio: { weight: 5, check: (val) => val && val.trim().length > 0 },
+      
+      // Professional Information (30%)
+      title: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      skills: { weight: 15, check: (val) => Array.isArray(val) && val.length > 0 },
+      resume: { weight: 5, check: (val) => val && val.trim().length > 0 },
+      
+      // Job Preferences (45%)
+      preferredCategory: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      preferredJobType: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      preferredLocation: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      experienceLevel: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      expectedSalaryMin: { weight: 2.5, check: (val) => val && Number(val) > 0 },
+      expectedSalaryMax: { weight: 2.5, check: (val) => val && Number(val) > 0 },
+    };
+
+    let totalWeight = 0;
+    let earnedWeight = 0;
+
+    // Calculate total weight and earned weight
+    Object.keys(fields).forEach((key) => {
+      const field = fields[key];
+      totalWeight += field.weight;
+      
+      // Check if field is populated
+      if (field.check(data[key])) {
+        earnedWeight += field.weight;
+      }
+    });
+
+    // Calculate percentage (capped at 100%)
+    const percentage = Math.min(Math.round((earnedWeight / totalWeight) * 100), 100);
+    return percentage;
+  };
+
+  // Update completion percentage whenever formData changes
+  useEffect(() => {
+    const percentage = calculateProfileCompletion(formData);
+    setCompletionPercentage(percentage);
+  }, [formData]);
+
   useEffect(() => {
     if (user) {
-      setFormData({
+      const userData = {
         name: user.name || '',
         email: user.email || '',
         avatar: user.avatar || '',
@@ -96,7 +145,8 @@ const UserProfile = () => {
         expectedSalaryMax: user.expectedSalaryMax || '',
         bio: user.bio || '',
         title: user.title || '',
-      });
+      };
+      setFormData(userData);
       setAvatarPreview(user.avatar || '');
     }
   }, [user]);
@@ -205,7 +255,27 @@ const UserProfile = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, formData);
+      
+      // Update user context with new data
       updateUser(response.data);
+      
+      // Update form data with response
+      setFormData({
+        name: response.data.name || '',
+        email: response.data.email || '',
+        avatar: response.data.avatar || '',
+        resume: response.data.resume || '',
+        skills: response.data.skills || [],
+        preferredCategory: response.data.preferredCategory || '',
+        preferredJobType: response.data.preferredJobType || '',
+        preferredLocation: response.data.preferredLocation || '',
+        experienceLevel: response.data.experienceLevel || '',
+        expectedSalaryMin: response.data.expectedSalaryMin || '',
+        expectedSalaryMax: response.data.expectedSalaryMax || '',
+        bio: response.data.bio || '',
+        title: response.data.title || '',
+      });
+      
       toast.success('Profile updated successfully');
       setIsEditing(false);
     } catch (error) {
@@ -214,26 +284,6 @@ const UserProfile = () => {
       setLoading(false);
     }
   };
-
-  const calculateProfileCompletion = () => {
-    let completed = 0;
-    const fields = [
-      'name', 'email', 'avatar', 'bio', 'title',
-      'skills', 'preferredCategory', 'preferredJobType',
-      'preferredLocation', 'experienceLevel'
-    ];
-    const total = fields.length;
-    fields.forEach(field => {
-      if (field === 'skills') {
-        if (formData.skills.length > 0) completed++;
-      } else if (formData[field] && formData[field] !== '') {
-        completed++;
-      }
-    });
-    return Math.round((completed / total) * 100);
-  };
-
-  const completionPercentage = calculateProfileCompletion();
 
   return (
     <DashboardLayout activeMenu="profile">
@@ -256,7 +306,7 @@ const UserProfile = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Profile Completion */}
+              {/* Profile Completion - FIXED: Always shows correct percentage */}
               <div className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
                 <div className="relative w-8 h-8">
                   <svg className="w-8 h-8 transform -rotate-90">
@@ -297,11 +347,33 @@ const UserProfile = () => {
                 </button>
               ) : (
                 <button
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    // Reset form data to user data when cancelling
+                    if (user) {
+                      const userData = {
+                        name: user.name || '',
+                        email: user.email || '',
+                        avatar: user.avatar || '',
+                        resume: user.resume || '',
+                        skills: user.skills || [],
+                        preferredCategory: user.preferredCategory || '',
+                        preferredJobType: user.preferredJobType || '',
+                        preferredLocation: user.preferredLocation || '',
+                        experienceLevel: user.experienceLevel || '',
+                        expectedSalaryMin: user.expectedSalaryMin || '',
+                        expectedSalaryMax: user.expectedSalaryMax || '',
+                        bio: user.bio || '',
+                        title: user.title || '',
+                      };
+                      setFormData(userData);
+                      setAvatarPreview(user.avatar || '');
+                    }
+                  }}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-xl font-semibold hover:bg-white/20 transition-all"
                 >
                   <Eye className="w-4 h-4" />
-                  View Profile
+                  Cancel
                 </button>
               )}
             </div>
@@ -310,7 +382,7 @@ const UserProfile = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-6">
-            {/* Profile Picture Card - LinkedIn Green Theme */}
+            {/* Profile Picture Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
               <h2 className="text-lg font-bold text-[#1D2226] mb-6 flex items-center gap-2">
                 <Camera className="w-5 h-5 text-[#0A6642]" />
@@ -355,7 +427,7 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Personal Information Card - LinkedIn Green Theme */}
+            {/* Personal Information Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
               <h2 className="text-lg font-bold text-[#1D2226] mb-6 flex items-center gap-2">
                 <User className="w-5 h-5 text-[#0A6642]" />
@@ -444,7 +516,7 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Resume Card - LinkedIn Green Theme */}
+            {/* Resume Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
               <h2 className="text-lg font-bold text-[#1D2226] mb-6 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#0A6642]" />
@@ -539,7 +611,7 @@ const UserProfile = () => {
               </p>
             </div>
 
-            {/* Skills & Preferences Card - LinkedIn Green Theme */}
+            {/* Skills & Preferences Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-8">
               <div className="mb-6">
                 <h2 className="text-lg font-bold text-[#1D2226] flex items-center gap-2">
@@ -758,7 +830,7 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Save Button - LinkedIn Green Theme */}
+            {/* Save Button */}
             {isEditing && (
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4">
                 <button
@@ -766,7 +838,7 @@ const UserProfile = () => {
                   onClick={() => {
                     setIsEditing(false);
                     if (user) {
-                      setFormData({
+                      const userData = {
                         name: user.name || '',
                         email: user.email || '',
                         avatar: user.avatar || '',
@@ -780,7 +852,8 @@ const UserProfile = () => {
                         expectedSalaryMax: user.expectedSalaryMax || '',
                         bio: user.bio || '',
                         title: user.title || '',
-                      });
+                      };
+                      setFormData(userData);
                       setAvatarPreview(user.avatar || '');
                     }
                   }}

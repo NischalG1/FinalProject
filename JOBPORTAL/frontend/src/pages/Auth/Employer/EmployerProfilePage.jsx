@@ -1,3 +1,4 @@
+// frontend/src/pages/Auth/Employer/EmployerProfilePage.jsx
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
@@ -22,6 +23,7 @@ import {
   Calendar,
   Target,
   ShieldCheck,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import axiosInstance from '../../../utlis/axiosinstance';
@@ -51,6 +53,7 @@ const EmployerProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
 
   const companySizes = [
     { value: '', label: 'Select Company Size' },
@@ -76,9 +79,43 @@ const EmployerProfilePage = () => {
     { value: 'Other', label: 'Other' },
   ];
 
+  // Calculate profile completion for employer
+  const calculateProfileCompletion = (data) => {
+    const fields = {
+      name: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      avatar: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      companyName: { weight: 15, check: (val) => val && val.trim().length > 0 },
+      companyDescription: { weight: 15, check: (val) => val && val.trim().length > 0 },
+      companyLogo: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      industry: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      companyWebsite: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      companyLocation: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      companyPhone: { weight: 5, check: (val) => val && val.trim().length > 0 },
+      companySize: { weight: 5, check: (val) => val && val.trim().length > 0 },
+    };
+
+    let totalWeight = 0;
+    let earnedWeight = 0;
+
+    Object.keys(fields).forEach((key) => {
+      const field = fields[key];
+      totalWeight += field.weight;
+      if (field.check(data[key])) {
+        earnedWeight += field.weight;
+      }
+    });
+
+    return Math.min(Math.round((earnedWeight / totalWeight) * 100), 100);
+  };
+
+  useEffect(() => {
+    const percentage = calculateProfileCompletion(formData);
+    setCompletionPercentage(percentage);
+  }, [formData]);
+
   useEffect(() => {
     if (user) {
-      setFormData({
+      const userData = {
         name: user.name || '',
         email: user.email || '',
         avatar: user.avatar || '',
@@ -91,7 +128,8 @@ const EmployerProfilePage = () => {
         companySize: user.companySize || '',
         industry: user.industry || '',
         foundedYear: user.foundedYear || '',
-      });
+      };
+      setFormData(userData);
       setAvatarPreview(user.avatar || '');
       setLogoPreview(user.companyLogo || '');
     }
@@ -152,36 +190,59 @@ const EmployerProfilePage = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, formData);
+      
+      const updateData = {
+        name: formData.name,
+        avatar: formData.avatar,
+        companyName: formData.companyName,
+        companyDescription: formData.companyDescription,
+        companyLogo: formData.companyLogo,
+        companyWebsite: formData.companyWebsite,
+        companyLocation: formData.companyLocation,
+        companyPhone: formData.companyPhone,
+        companySize: formData.companySize,
+        industry: formData.industry,
+        foundedYear: formData.foundedYear,
+      };
+
+      const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, updateData);
+      
       updateUser(response.data);
+      
+      const updatedData = {
+        name: response.data.name || '',
+        email: response.data.email || '',
+        avatar: response.data.avatar || '',
+        companyName: response.data.companyName || '',
+        companyDescription: response.data.companyDescription || '',
+        companyLogo: response.data.companyLogo || '',
+        companyWebsite: response.data.companyWebsite || '',
+        companyLocation: response.data.companyLocation || '',
+        companyPhone: response.data.companyPhone || '',
+        companySize: response.data.companySize || '',
+        industry: response.data.industry || '',
+        foundedYear: response.data.foundedYear || '',
+      };
+      setFormData(updatedData);
+      setAvatarPreview(response.data.avatar || '');
+      setLogoPreview(response.data.companyLogo || '');
+      
       toast.success('Profile updated successfully');
       setIsEditing(false);
     } catch (error) {
-      toast.error('Failed to update profile');
+      console.error('Update error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
   };
-
-  // Calculate profile completion
-  const calculateCompletion = () => {
-    let completed = 0;
-    const fields = ['companyName', 'companyDescription', 'companyLogo', 'companyWebsite', 'companyLocation', 'companyPhone', 'companySize', 'industry'];
-    const total = fields.length;
-    fields.forEach(field => {
-      if (formData[field] && formData[field] !== '') completed++;
-    });
-    return Math.round((completed / total) * 100);
-  };
-
-  const completionPercentage = calculateCompletion();
 
   return (
     <DashboardLayout activeMenu="company-profile">
       <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 lg:px-8 font-sans text-[#0F172A]">
         <div className="max-w-6xl mx-auto space-y-6">
           
-          {/* Top Welcome Panel - Matching EmployerDashboard Styling */}
+          {/* Top Welcome Panel */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-[#047857] uppercase tracking-wider mb-1">
@@ -217,7 +278,7 @@ const EmployerProfilePage = () => {
                   onClick={() => {
                     setIsEditing(false);
                     if (user) {
-                      setFormData({
+                      const userData = {
                         name: user.name || '',
                         email: user.email || '',
                         avatar: user.avatar || '',
@@ -230,14 +291,15 @@ const EmployerProfilePage = () => {
                         companySize: user.companySize || '',
                         industry: user.industry || '',
                         foundedYear: user.foundedYear || '',
-                      });
+                      };
+                      setFormData(userData);
                       setAvatarPreview(user.avatar || '');
                       setLogoPreview(user.companyLogo || '');
                     }
                   }} 
                   className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E2E8F0] text-[#475569] hover:text-[#0F172A] rounded-xl font-semibold text-sm hover:bg-[#F1F5F9] transition-all shadow-sm"
                 >
-                  <Eye className="w-4 h-4" /> View Profile
+                  <Eye className="w-4 h-4" /> Cancel
                 </button>
               )}
             </div>
@@ -246,26 +308,59 @@ const EmployerProfilePage = () => {
           {/* Main Content Card */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm overflow-hidden">
             <form onSubmit={handleSubmit}>
-              {/* Profile Header */}
+              {/* Profile Header - Shows BOTH Profile Avatar and Company Logo */}
               <div className="relative">
                 <div className="h-32 bg-[#F8FAFC] border-b border-[#E2E8F0]"></div>
                 <div className="px-6 pb-6">
                   <div className="flex flex-col md:flex-row md:items-end gap-6 -mt-12">
+                    {/* Profile Avatar (Circle) */}
                     <div className="relative">
                       {avatarPreview ? (
-                        <img src={avatarPreview} alt="Avatar" className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-md" />
+                        <img 
+                          src={avatarPreview} 
+                          alt="Profile" 
+                          className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
+                        />
                       ) : (
-                        <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-[#047857] to-[#065f46] border-4 border-white shadow-md flex items-center justify-center">
-                          <Building2 className="w-14 h-14 text-white" />
+                        <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#047857] to-[#065f46] border-4 border-white shadow-md flex items-center justify-center">
+                          <User className="w-14 h-14 text-white" />
                         </div>
                       )}
                       {isEditing && (
-                        <label className="absolute bottom-0 right-0 w-8 h-8 bg-[#047857] rounded-xl flex items-center justify-center cursor-pointer hover:bg-[#065f46] transition-colors border-2 border-white shadow-md">
+                        <label className="absolute bottom-0 right-0 w-8 h-8 bg-[#047857] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#065f46] transition-colors border-2 border-white shadow-md">
                           <Camera className="w-4 h-4 text-white" />
                           <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" disabled={uploading} />
                         </label>
                       )}
+                      <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-[#475569] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E2E8F0] whitespace-nowrap">
+                        Profile
+                      </span>
                     </div>
+
+                    {/* Company Logo (Square) */}
+                    <div className="relative">
+                      {logoPreview ? (
+                        <img 
+                          src={logoPreview} 
+                          alt="Company Logo" 
+                          className="w-28 h-28 rounded-2xl object-cover border-4 border-white shadow-md bg-white"
+                        />
+                      ) : (
+                        <div className="w-28 h-28 rounded-2xl bg-white border-4 border-white shadow-md flex items-center justify-center">
+                          <Building2 className="w-14 h-14 text-[#94A3B8]" />
+                        </div>
+                      )}
+                      {isEditing && (
+                        <label className="absolute bottom-0 right-0 w-8 h-8 bg-[#047857] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#065f46] transition-colors border-2 border-white shadow-md">
+                          <Camera className="w-4 h-4 text-white" />
+                          <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" disabled={uploading} />
+                        </label>
+                      )}
+                      <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-[#475569] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E2E8F0] whitespace-nowrap">
+                        Logo
+                      </span>
+                    </div>
+
                     <div className="flex-1 min-w-0">
                       <h2 className="text-2xl font-bold text-[#0F172A]">{formData.companyName || formData.name || 'Company Name'}</h2>
                       <p className="text-[#475569] text-sm">{formData.email}</p>
@@ -279,32 +374,7 @@ const EmployerProfilePage = () => {
                 </div>
               </div>
 
-              {/* Company Logo Section */}
-              {isEditing && (
-                <div className="px-6 pb-6 border-b border-[#E2E8F0]">
-                  <div className="flex items-center gap-6">
-                    <div className="relative">
-                      {logoPreview ? (
-                        <img src={logoPreview} alt="Company Logo" className="w-20 h-20 rounded-xl object-cover border border-[#E2E8F0]" />
-                      ) : (
-                        <div className="w-20 h-20 rounded-xl bg-[#F8FAFC] flex items-center justify-center border border-[#E2E8F0]">
-                          <Building2 className="w-10 h-10 text-[#94A3B8]" />
-                        </div>
-                      )}
-                      <label className="absolute bottom-0 right-0 w-7 h-7 bg-[#047857] rounded-lg flex items-center justify-center cursor-pointer hover:bg-[#065f46] transition-colors border-2 border-white shadow-md">
-                        <Camera className="w-3.5 h-3.5 text-white" />
-                        <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" disabled={uploading} />
-                      </label>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-[#0F172A]">Company Logo</p>
-                      <p className="text-xs text-[#94A3B8]">Upload your company logo (JPG, PNG, Max 5MB)</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Form Content */}
+              {/* Rest of the form remains the same */}
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Personal Information */}
@@ -522,7 +592,7 @@ const EmployerProfilePage = () => {
                       onClick={() => {
                         setIsEditing(false);
                         if (user) {
-                          setFormData({
+                          const userData = {
                             name: user.name || '',
                             email: user.email || '',
                             avatar: user.avatar || '',
@@ -535,7 +605,8 @@ const EmployerProfilePage = () => {
                             companySize: user.companySize || '',
                             industry: user.industry || '',
                             foundedYear: user.foundedYear || '',
-                          });
+                          };
+                          setFormData(userData);
                           setAvatarPreview(user.avatar || '');
                           setLogoPreview(user.companyLogo || '');
                         }

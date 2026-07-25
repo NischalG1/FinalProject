@@ -1,9 +1,12 @@
+// frontend/src/utlis/apiPaths.js
 export const BASE_URL = "http://localhost:8000";
 
 export const API_PATHS = {
   AUTH: {
     REGISTER: "/api/auth/register",
     LOGIN: "/api/auth/login",
+    REFRESH_TOKEN: "/api/auth/refresh-token",
+    LOGOUT: "/api/auth/logout",
     GET_PROFILE: "/api/auth/me",
     UPDATE_PROFILE: "/api/user/profile",
     DELETE_RESUME: "/api/user/resume",
@@ -21,15 +24,24 @@ export const API_PATHS = {
     UPDATE_JOB: (id) => `/api/jobs/${id}`,
     TOGGLE_CLOSE: (id) => `/api/jobs/${id}/toggle-close`,
     DELETE_JOB: (id) => `/api/jobs/${id}`,
-    
-    GET_RECOMMENDATIONS: "/api/jobs/recommendations",
-    GET_COLLABORATIVE: "/api/jobs/collaborative/recommendations",
-    GET_SIMILAR_JOBS: (id) => `/api/jobs/${id}/similar`,
-    CLEAR_CACHE: "/api/jobs/recommendations/clear-cache",
+    GET_JOBS_BY_COMPANY: (id) => `/api/jobs/company/${id}`,
+  },
 
-    SAVE_JOB: (id) => `/api/saved-jobs/${id}`,
-    UNSAVE_JOB: (id) => `/api/saved-jobs/${id}`,
-    GET_SAVED_JOBS: "/api/saved-jobs/my",
+  SAVED_JOBS: {
+    SAVE: (id) => `/api/saved-jobs/${id}`,
+    UNSAVE: (id) => `/api/saved-jobs/${id}`,
+    GET_MY: "/api/saved-jobs/my",
+  },
+
+  RECOMMENDATIONS: {
+    GET_RECOMMENDATIONS: "/api/recommendations",
+    GET_SIMILAR_JOBS: (id) => `/api/recommendations/similar/${id}`,
+    GET_COLLABORATIVE: "/api/recommendations/collaborative",
+    CLEAR_CACHE: "/api/recommendations/clear-cache",
+  },
+
+  USER: {
+    GET_PUBLIC_PROFILE: (id) => `/api/user/${id}`,
   },
 
   APPLICATIONS: {
@@ -45,6 +57,17 @@ export const API_PATHS = {
     UPLOAD_IMAGE: "/api/auth/upload-image",
   },
 
+  NOTIFICATIONS: {
+    GET_ALL: "/api/notifications",
+    UNREAD_COUNT: "/api/notifications/unread-count",
+    MARK_READ: (id) => `/api/notifications/${id}/read`,
+    MARK_ALL_READ: "/api/notifications/read-all",
+    DELETE: (id) => `/api/notifications/${id}`,
+    CLEAR_ALL: "/api/notifications/clear-all",
+    SEND: "/api/notifications",
+    BROADCAST: "/api/notifications/broadcast",
+  },
+
   ADMIN: {
     GET_ALL_USERS: "/api/admin/users",
     DELETE_USER: (id) => `/api/admin/users/${id}`,
@@ -53,5 +76,6 @@ export const API_PATHS = {
     APPROVE_JOB: (id) => `/api/admin/jobs/${id}/approve`,
     REJECT_JOB: (id) => `/api/admin/jobs/${id}/reject`,
     DELETE_JOB: (id) => `/api/admin/jobs/${id}`,
+    GET_RECENT_ACTIVITY: "/api/admin/activity",
   },
 };

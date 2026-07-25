@@ -1,3 +1,4 @@
+// frontend/src/pages/Auth/Employer/ApplicationViewer.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -23,11 +24,13 @@ import {
   ShieldCheck,
   Layers,
   Activity,
-  ChevronRight
+  ChevronRight,
+  Phone,
 } from 'lucide-react';
 import axiosInstance from '../../../utlis/axiosinstance';
 import { API_PATHS } from '../../../utlis/apiPaths';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import JobDetailsModal from '../../../components/JobDetailsModal';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 
@@ -45,6 +48,8 @@ const ApplicationViewer = () => {
   const [scoringStats, setScoringStats] = useState(null);
   const [loadingScoring, setLoadingScoring] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -121,6 +126,13 @@ const ApplicationViewer = () => {
     }
   };
 
+  const handleJobClick = (jobId) => {
+    if (jobId) {
+      setSelectedJobId(jobId);
+      setIsModalOpen(true);
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'Accepted': return <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />;
@@ -167,7 +179,7 @@ const ApplicationViewer = () => {
       <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 lg:px-8 font-sans text-[#0F172A]">
         <div className="max-w-6xl mx-auto space-y-6">
           
-          {/* Top Control Header - Matching EmployerDashboard Welcome Panel */}
+          {/* Top Control Header */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <button
@@ -204,7 +216,7 @@ const ApplicationViewer = () => {
             </div>
           </div>
 
-          {/* Configuration & Filter Blocks - Enhanced with EmployerDashboard styling */}
+          {/* Configuration & Filter Blocks */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -255,7 +267,7 @@ const ApplicationViewer = () => {
               </div>
             </div>
 
-            {/* AI Breakdown Dynamic Stats Panel - Enhanced with better styling */}
+            {/* AI Breakdown Dynamic Stats Panel */}
             {showScoring && scoringStats && (
               <div className="pt-5 border-t border-[#F1F5F9]">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -309,7 +321,6 @@ const ApplicationViewer = () => {
               </p>
             </div>
           ) : (
-            /* Cards Output Matrix Grid - Enhanced with better styling */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredApplications.map((application) => (
                 <div 
@@ -334,10 +345,16 @@ const ApplicationViewer = () => {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-[#0F172A] group-hover:text-[#047857] transition-colors truncate">
+                          <h3 
+                            className="text-sm font-bold text-[#0F172A] group-hover:text-[#047857] transition-colors truncate cursor-pointer"
+                            onClick={() => handleJobClick(application.job?._id)}
+                          >
                             {application.applicant?.name}
                           </h3>
-                          <p className="text-xs text-[#475569] mt-0.5 flex items-center gap-1 font-medium truncate">
+                          <p 
+                            className="text-xs text-[#475569] mt-0.5 flex items-center gap-1 font-medium truncate cursor-pointer hover:text-[#047857]"
+                            onClick={() => handleJobClick(application.job?._id)}
+                          >
                             <Building2 className="w-3 h-3 text-[#94A3B8] shrink-0" />
                             {application.job?.title}
                           </p>
@@ -358,6 +375,40 @@ const ApplicationViewer = () => {
                       <div className="flex items-center gap-2 text-xs text-[#475569] font-medium bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1.5 rounded-xl truncate">
                         <Mail className="w-3.5 h-3.5 text-[#94A3B8] shrink-0" />
                         <span className="truncate">{application.applicant?.email}</span>
+                      </div>
+
+                      {/* NEW: Contact Information for Employer - Phone & Email */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <a
+                          href={`mailto:${application.applicant?.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs text-[#047857] bg-emerald-50 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                        >
+                          <Mail className="w-3 h-3" />
+                          {application.applicant?.email}
+                        </a>
+                        {application.applicant?.phone && (
+                          <a
+                            href={`tel:${application.applicant?.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs text-[#047857] bg-emerald-50 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                          >
+                            <Phone className="w-3 h-3" />
+                            {application.applicant?.phone}
+                          </a>
+                        )}
+                        {application.applicant?.resume && (
+                          <a
+                            href={application.applicant.resume}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs text-[#047857] bg-emerald-50 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            Resume
+                          </a>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between text-xs font-semibold text-[#0F172A] pt-0.5">
@@ -415,9 +466,9 @@ const ApplicationViewer = () => {
                     )}
                   </div>
 
-                  {/* Actions & Core Control Footer strip - Enhanced styling */}
+                  {/* Actions & Core Control Footer strip */}
                   <div className="mt-5 pt-3.5 border-t border-[#F1F5F9] flex flex-wrap items-center justify-between gap-2">
-                    <div>
+                    <div className="flex items-center gap-1.5">
                       {application.applicant?.resume && (
                         <a 
                           href={application.applicant.resume} 
@@ -425,7 +476,7 @@ const ApplicationViewer = () => {
                           rel="noopener noreferrer" 
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100 rounded-xl transition-all text-xs font-bold"
                         >
-                          <Download className="w-3.5 h-3.5" /> View Resume
+                          <Download className="w-3.5 h-3.5" /> Resume
                         </a>
                       )}
                     </div>
@@ -463,6 +514,24 @@ const ApplicationViewer = () => {
           )}
         </div>
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJobId(null);
+        }}
+        onAction={() => {
+          if (selectedJob && selectedJob !== 'all') {
+            fetchApplications(selectedJob);
+            if (showScoring) {
+              fetchScoring(selectedJob);
+            }
+          }
+        }}
+      />
     </DashboardLayout>
   );
 };

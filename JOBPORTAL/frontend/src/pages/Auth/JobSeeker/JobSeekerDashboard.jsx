@@ -25,6 +25,7 @@ import { API_PATHS } from "../../../utlis/apiPaths";
 import { useAuth } from "../../../context/AuthContext";
 import DashboardLayout from "../../../components/layout/DashboardLayout";
 import MatchScoreBadge, { MatchDetails } from "../../../components/ui/MatchScoreBadge";
+import JobDetailsModal from "../../../components/JobDetailsModal";
 import toast from "react-hot-toast";
 import moment from "moment";
 
@@ -38,6 +39,8 @@ const JobSeekerDashboard = () => {
     message: "",
   });
   const [loading, setLoading] = useState(true);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -79,6 +82,13 @@ const JobSeekerDashboard = () => {
       setLoading(false);
     }
   }, []);
+
+  const handleJobClick = (jobId) => {
+    if (jobId) {
+      setSelectedJobId(jobId);
+      setIsModalOpen(true);
+    }
+  };
 
   useEffect(() => {
     if (user && !user.role) {
@@ -338,7 +348,7 @@ const JobSeekerDashboard = () => {
                 {recommendedJobs.slice(0, 6).map((job) => (
                   <div
                     key={job._id}
-                    onClick={() => navigate(`/job/${job._id}`)}
+                    onClick={() => handleJobClick(job._id)}
                     className="group relative p-5 border-2 border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:shadow-md transition-all cursor-pointer"
                   >
                     <div className="absolute top-4 right-4">
@@ -488,7 +498,7 @@ const JobSeekerDashboard = () => {
                     <div
                       key={application._id}
                       className="p-4 border-2 border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:shadow-md transition-all cursor-pointer group"
-                      onClick={() => application.job && navigate(`/job/${application.job._id}`)}
+                      onClick={() => application.job && handleJobClick(application.job._id)}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
@@ -561,7 +571,7 @@ const JobSeekerDashboard = () => {
                     <div
                       key={savedJob._id}
                       className="p-4 border-2 border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:shadow-md transition-all cursor-pointer group"
-                      onClick={() => navigate(`/job/${job._id}`)}
+                      onClick={() => handleJobClick(job._id)}
                     >
                       <div className="flex items-start gap-3">
                         {job.company?.companyLogo ? (
@@ -635,6 +645,19 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJobId(null);
+        }}
+        onAction={() => {
+          fetchDashboardData();
+        }}
+      />
     </DashboardLayout>
   );
 };

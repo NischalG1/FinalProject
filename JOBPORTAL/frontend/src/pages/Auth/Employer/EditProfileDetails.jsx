@@ -53,6 +53,7 @@ const EditProfileDetails = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [skillInput, setSkillInput] = useState('');
+  const [completionPercentage, setCompletionPercentage] = useState(0);
 
   const EXPERIENCE_LEVELS = [
     { value: '', label: 'Select Experience Level' },
@@ -78,9 +79,56 @@ const EditProfileDetails = () => {
     { value: 'Business Analyst', label: 'Business Analyst' },
   ];
 
+  // Calculate profile completion - FIXED VERSION
+  const calculateProfileCompletion = (data) => {
+    // Define all fields that contribute to profile completion
+    const fields = {
+      // Personal Information (25%)
+      name: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      avatar: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      bio: { weight: 5, check: (val) => val && val.trim().length > 0 },
+      
+      // Professional Information (30%)
+      title: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      skills: { weight: 15, check: (val) => Array.isArray(val) && val.length > 0 },
+      
+      // Job Preferences (45%)
+      preferredCategory: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      preferredJobType: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      preferredLocation: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      experienceLevel: { weight: 10, check: (val) => val && val.trim().length > 0 },
+      expectedSalaryMin: { weight: 2.5, check: (val) => val && Number(val) > 0 },
+      expectedSalaryMax: { weight: 2.5, check: (val) => val && Number(val) > 0 },
+    };
+
+    let totalWeight = 0;
+    let earnedWeight = 0;
+
+    // Calculate total weight and earned weight
+    Object.keys(fields).forEach((key) => {
+      const field = fields[key];
+      totalWeight += field.weight;
+      
+      // Check if field is populated
+      if (field.check(data[key])) {
+        earnedWeight += field.weight;
+      }
+    });
+
+    // Calculate percentage (capped at 100%)
+    const percentage = Math.min(Math.round((earnedWeight / totalWeight) * 100), 100);
+    return percentage;
+  };
+
+  // Update completion percentage whenever formData changes
+  useEffect(() => {
+    const percentage = calculateProfileCompletion(formData);
+    setCompletionPercentage(percentage);
+  }, [formData]);
+
   useEffect(() => {
     if (user) {
-      setFormData({
+      const userData = {
         name: user.name || '',
         email: user.email || '',
         avatar: user.avatar || '',
@@ -93,7 +141,8 @@ const EditProfileDetails = () => {
         experienceLevel: user.experienceLevel || '',
         expectedSalaryMin: user.expectedSalaryMin || '',
         expectedSalaryMax: user.expectedSalaryMax || '',
-      });
+      };
+      setFormData(userData);
       setAvatarPreview(user.avatar || '');
     }
   }, [user]);
@@ -157,12 +206,54 @@ const EditProfileDetails = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, formData);
+      
+      // Prepare data for API - include ALL job seeker fields
+      const updateData = {
+        name: formData.name,
+        avatar: formData.avatar,
+        bio: formData.bio,
+        title: formData.title,
+        skills: formData.skills,
+        preferredCategory: formData.preferredCategory,
+        preferredJobType: formData.preferredJobType,
+        preferredLocation: formData.preferredLocation,
+        experienceLevel: formData.experienceLevel,
+        expectedSalaryMin: formData.expectedSalaryMin,
+        expectedSalaryMax: formData.expectedSalaryMax,
+      };
+
+      console.log('Sending update data:', updateData); // Debug log
+
+      const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, updateData);
+      
+      console.log('Update response:', response.data); // Debug log
+
+      // Update user context with new data
       updateUser(response.data);
+      
+      // Update form data with response
+      const updatedData = {
+        name: response.data.name || '',
+        email: response.data.email || '',
+        avatar: response.data.avatar || '',
+        bio: response.data.bio || '',
+        title: response.data.title || '',
+        skills: response.data.skills || [],
+        preferredCategory: response.data.preferredCategory || '',
+        preferredJobType: response.data.preferredJobType || '',
+        preferredLocation: response.data.preferredLocation || '',
+        experienceLevel: response.data.experienceLevel || '',
+        expectedSalaryMin: response.data.expectedSalaryMin || '',
+        expectedSalaryMax: response.data.expectedSalaryMax || '',
+      };
+      setFormData(updatedData);
+      setAvatarPreview(response.data.avatar || '');
+      
       toast.success('Profile updated successfully');
       navigate('/profile');
     } catch (error) {
-      toast.error('Failed to update profile');
+      console.error('Update error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -173,7 +264,7 @@ const EditProfileDetails = () => {
       <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 lg:px-8 font-sans text-[#0F172A]">
         <div className="max-w-6xl mx-auto space-y-6">
           
-          {/* Top Welcome Panel - Matching EmployerDashboard Styling */}
+          {/* Top Welcome Panel */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-[#047857] uppercase tracking-wider mb-1">
@@ -185,17 +276,30 @@ const EditProfileDetails = () => {
               </p>
             </div>
             
-            <button
-              type="button"
-              onClick={() => navigate('/profile')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E2E8F0] text-[#475569] hover:text-[#0F172A] font-semibold text-sm rounded-xl hover:bg-[#F1F5F9] transition-all shadow-sm shrink-0 self-start sm:self-auto"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Profile
-            </button>
+            <div className="flex items-center gap-3 self-start sm:self-auto">
+              <div className="flex items-center gap-2 px-3 py-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl">
+                <div className="relative w-8 h-8">
+                  <svg className="w-8 h-8 transform -rotate-90">
+                    <circle cx="16" cy="16" r="12" stroke="#E2E8F0" strokeWidth="3" fill="none" />
+                    <circle cx="16" cy="16" r="12" stroke="#047857" strokeWidth="3" fill="none" strokeDasharray={`${completionPercentage * 0.754} 75.4`} strokeLinecap="round" />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[#047857]">{completionPercentage}%</span>
+                </div>
+                <span className="text-xs font-medium text-[#475569]">Complete</span>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E2E8F0] text-[#475569] hover:text-[#0F172A] font-semibold text-sm rounded-xl hover:bg-[#F1F5F9] transition-all shadow-sm shrink-0 self-start sm:self-auto"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Profile
+              </button>
+            </div>
           </div>
 
-          {/* Dynamic Tip Widget banner - Updated to match theme */}
+          {/* Dynamic Tip Widget */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-start gap-3.5">
@@ -287,11 +391,11 @@ const EditProfileDetails = () => {
                     <div className="w-20 h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-[#047857] rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, (formData.skills.length * 10) + (formData.title ? 20 : 0) + (formData.preferredLocation ? 15 : 0) + (formData.bio ? 15 : 0))}%` }}
+                        style={{ width: `${completionPercentage}%` }}
                       />
                     </div>
                     <span className="text-xs font-bold text-[#047857]">
-                      {Math.min(100, (formData.skills.length * 10) + (formData.title ? 20 : 0) + (formData.preferredLocation ? 15 : 0) + (formData.bio ? 15 : 0))}%
+                      {completionPercentage}%
                     </span>
                   </div>
                 </div>
@@ -557,7 +661,28 @@ const EditProfileDetails = () => {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/profile')}
+                  onClick={() => {
+                    // Reset to user data when canceling
+                    if (user) {
+                      const userData = {
+                        name: user.name || '',
+                        email: user.email || '',
+                        avatar: user.avatar || '',
+                        bio: user.bio || '',
+                        title: user.title || '',
+                        skills: user.skills || [],
+                        preferredCategory: user.preferredCategory || '',
+                        preferredJobType: user.preferredJobType || '',
+                        preferredLocation: user.preferredLocation || '',
+                        experienceLevel: user.experienceLevel || '',
+                        expectedSalaryMin: user.expectedSalaryMin || '',
+                        expectedSalaryMax: user.expectedSalaryMax || '',
+                      };
+                      setFormData(userData);
+                      setAvatarPreview(user.avatar || '');
+                    }
+                    navigate('/profile');
+                  }}
                   className="px-5 py-2.5 text-sm font-semibold text-[#475569] bg-transparent rounded-xl hover:bg-[#F1F5F9] active:scale-95 transition-all"
                 >
                   Cancel Changes

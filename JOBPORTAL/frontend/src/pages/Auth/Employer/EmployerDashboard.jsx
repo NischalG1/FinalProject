@@ -21,12 +21,15 @@ import axiosInstance from "../../../utlis/axiosinstance";
 import { API_PATHS } from "../../../utlis/apiPaths";
 import DashboardLayout from "../../../components/layout/DashboardLayout";
 import LoadingSpinner from "../../../components/layout/LoadingSpinner";
+import JobDetailsModal from "../../../components/JobDetailsModal";
 import toast from "react-hot-toast";
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const getDashboardOverView = async () => {
     try {
@@ -46,6 +49,13 @@ const EmployerDashboard = () => {
   useEffect(() => {
     getDashboardOverView();
   }, []);
+
+  const handleJobClick = (jobId) => {
+    if (jobId) {
+      setSelectedJobId(jobId);
+      setIsModalOpen(true);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -67,7 +77,7 @@ const EmployerDashboard = () => {
       <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 lg:px-8 font-sans text-[#0F172A]">
         <div className="max-w-6xl mx-auto space-y-6">
           
-          {/* Top Welcome Panel - Identical to Admin Console Styling */}
+          {/* Top Welcome Panel */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-[#047857] uppercase tracking-wider mb-1">
@@ -181,7 +191,11 @@ const EmployerDashboard = () => {
                     </div>
                   ) : (
                     recentJobs.slice(0, 5).map((job) => (
-                      <div key={job._id} onClick={() => navigate(`/manage-jobs`)} className="flex items-center justify-between py-3.5 text-sm group hover:bg-[#F8FAFC]/50 px-2 -mx-2 rounded-xl transition-colors cursor-pointer">
+                      <div 
+                        key={job._id} 
+                        onClick={() => handleJobClick(job._id)} 
+                        className="flex items-center justify-between py-3.5 text-sm group hover:bg-[#F8FAFC]/50 px-2 -mx-2 rounded-xl transition-colors cursor-pointer"
+                      >
                         <div className="min-w-0 space-y-0.5">
                           <p className="font-semibold text-[#0F172A] group-hover:text-[#047857] transition-colors truncate">{job.title}</p>
                           <div className="flex items-center gap-3 text-xs text-[#475569] font-medium">
@@ -307,6 +321,19 @@ const EmployerDashboard = () => {
 
         </div>
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJobId(null);
+        }}
+        onAction={() => {
+          getDashboardOverView();
+        }}
+      />
     </DashboardLayout>
   );
 };

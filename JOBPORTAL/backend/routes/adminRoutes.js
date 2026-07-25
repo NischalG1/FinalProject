@@ -7,6 +7,7 @@ const {
   rejectJob,
   getAllJobs,
   deleteJob,
+  getRecentActivity, // Add this import
 } = require("../controllers/adminController");
 const { protect, adminOnly } = require("../middlewares/adminMiddleware");
 
@@ -18,7 +19,6 @@ router.get("/test", (req, res) => {
 });
 
 // All routes require admin authentication
-// Apply protect middleware first, then adminOnly
 router.get("/users", protect, adminOnly, getAllUsers);
 router.delete("/users/:id", protect, adminOnly, deleteUser);
 router.get("/jobs/pending", protect, adminOnly, getPendingJobs);
@@ -26,5 +26,8 @@ router.get("/jobs", protect, adminOnly, getAllJobs);
 router.put("/jobs/:id/approve", protect, adminOnly, approveJob);
 router.put("/jobs/:id/reject", protect, adminOnly, rejectJob);
 router.delete("/jobs/:id", protect, adminOnly, deleteJob);
+
+// New route for recent activity
+router.get("/activity", protect, adminOnly, getRecentActivity);
 
 module.exports = router;

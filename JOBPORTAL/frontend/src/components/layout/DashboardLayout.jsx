@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { 
-  Menu, 
-  X, 
-  Bell, 
+import {
+  Menu,
+  X,
+  Bell,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { 
-  EMPLOYER_NAVIGATION_MENU, 
-  JOBSEEKER_NAVIGATION_MENU, 
-  ADMIN_NAVIGATION_MENU 
+import { useNotifications } from "../../context/NotificationContext";
+import NotificationDropdown from "../../components/notifications/NotificationDropdown";
+import {
+  EMPLOYER_NAVIGATION_MENU,
+  JOBSEEKER_NAVIGATION_MENU,
+  ADMIN_NAVIGATION_MENU,
 } from "../../utlis/data";
 
 // Navigation Item Component - Green Theme
@@ -32,9 +34,13 @@ const NavigationItem = ({ item, isActive, onClick, isCollapsed }) => {
           : "text-[#5E6F8D] hover:text-[#1D2226] hover:bg-[#F3F6F9]"
       }`}
     >
-      <Icon className={`h-5 w-5 shrink-0 ${
-        isActive ? "text-[#0A6642]" : "text-[#5E6F8D] group-hover:text-[#0A6642]"
-      }`} />
+      <Icon
+        className={`h-5 w-5 shrink-0 ${
+          isActive
+            ? "text-[#0A6642]"
+            : "text-[#5E6F8D] group-hover:text-[#0A6642]"
+        }`}
+      />
       {!isCollapsed && (
         <span className="text-sm tracking-normal truncate">{item.name}</span>
       )}
@@ -81,25 +87,20 @@ const UserProfileButton = ({ user, onClick, isCollapsed }) => {
 
 const DashboardLayout = ({ activeMenu, children }) => {
   const { user, logout, loading: authLoading } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNavItem, setActiveNavItem] = useState(activeMenu || "dashboard");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [notifications] = useState([
-    { id: 1, read: false },
-    { id: 2, read: false },
-    { id: 3, read: true },
-  ]);
 
-  const navigationMenu = user?.role === "admin"
-    ? ADMIN_NAVIGATION_MENU
-    : user?.role === "employer" 
-      ? EMPLOYER_NAVIGATION_MENU 
-      : JOBSEEKER_NAVIGATION_MENU;
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const navigationMenu =
+    user?.role === "admin"
+      ? ADMIN_NAVIGATION_MENU
+      : user?.role === "employer"
+        ? EMPLOYER_NAVIGATION_MENU
+        : JOBSEEKER_NAVIGATION_MENU;
 
   useEffect(() => {
     const handleResize = () => {
@@ -118,7 +119,9 @@ const DashboardLayout = ({ activeMenu, children }) => {
       <div className="min-h-screen bg-[#F3F6F9] flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-[#E9ECEF] border-t-[#0A6642] rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs font-medium text-[#5E6F8D]">Loading account directory...</p>
+          <p className="text-xs font-medium text-[#5E6F8D]">
+            Loading account directory...
+          </p>
         </div>
       </div>
     );
@@ -128,8 +131,12 @@ const DashboardLayout = ({ activeMenu, children }) => {
     return (
       <div className="min-h-screen bg-[#F3F6F9] flex items-center justify-center p-4">
         <div className="text-center p-6 rounded-xl bg-white border border-[#E9ECEF] max-w-sm">
-          <p className="text-sm font-semibold text-[#1D2226] mb-1">Session Expired</p>
-          <p className="text-xs text-[#5E6F8D] mb-4">Please log in to verify your identity.</p>
+          <p className="text-sm font-semibold text-[#1D2226] mb-1">
+            Session Expired
+          </p>
+          <p className="text-xs text-[#5E6F8D] mb-4">
+            Please log in to verify your identity.
+          </p>
         </div>
       </div>
     );
@@ -137,19 +144,19 @@ const DashboardLayout = ({ activeMenu, children }) => {
 
   const handleNavigation = (itemId) => {
     setActiveNavItem(itemId);
+    // In DashboardLayout.jsx - update the routeMap
     const routeMap = {
       dashboard: "/dashboard",
       "employer-dashboard": "/employer-dashboard",
       "admin-dashboard": "/admin-dashboard",
       "find-jobs": "/find-jobs",
       "saved-jobs": "/saved-jobs",
+      "accepted-jobs": "/accepted-jobs", // Add this
       profile: "/profile",
       "post-job": "/post-job",
       "manage-jobs": "/manage-jobs",
       applicants: "/applicants",
-      "company-profile": "/company-profile",
-      "admin-jobs": "/admin-jobs",
-      "admin-users": "/admin-users",
+      "admin-broadcast": "/admin-broadcast",
     };
     navigate(routeMap[itemId] || `/${itemId}`);
     if (isMobile) setSidebarOpen(false);
@@ -160,35 +167,38 @@ const DashboardLayout = ({ activeMenu, children }) => {
 
   // Get role-specific tagline
   const getRoleTagline = () => {
-    switch(user?.role) {
-      case 'admin':
-        return 'Admin Panel';
-      case 'employer':
-        return 'Employer Portal';
-      case 'jobseeker':
-        return 'Professional Network';
+    switch (user?.role) {
+      case "admin":
+        return "Admin Panel";
+      case "employer":
+        return "Employer Portal";
+      case "jobseeker":
+        return "Professional Network";
       default:
-        return 'Professional Network';
+        return "Professional Network";
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F3F6F9] text-[#1D2226] flex font-sans antialiased">
-      
       {/* Sidebar Navigation - Green Theme */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-200 ease-in-out ${
           isMobile
-            ? sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            ? sidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
             : "translate-x-0"
         } ${
           isCollapsed ? "w-20" : "w-64"
         } bg-white border-r border-[#E9ECEF] shadow-sm`}
       >
         {/* Brand Header - Down2Work Green Theme */}
-        <div className={`flex items-center h-14 px-4 border-b border-[#E9ECEF] ${
-          isCollapsed ? "justify-center" : ""
-        }`}>
+        <div
+          className={`flex items-center h-14 px-4 border-b border-[#E9ECEF] ${
+            isCollapsed ? "justify-center" : ""
+          }`}
+        >
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#0A6642] flex items-center justify-center shadow-sm">
               <Briefcase className="w-4 h-4 text-white" />
@@ -221,12 +231,12 @@ const DashboardLayout = ({ activeMenu, children }) => {
 
         {/* Bottom Utility Deck - Green Theme */}
         <div className="border-t border-[#E9ECEF] p-3 space-y-2 bg-[#F8FAFB]">
-          <UserProfileButton 
-            user={user} 
+          <UserProfileButton
+            user={user}
             onClick={() => handleNavigation("profile")}
             isCollapsed={isCollapsed}
           />
-          
+
           <button
             className={`w-full flex items-center gap-3 px-4 py-2 text-xs font-semibold text-[#5E6F8D] hover:text-[#1D2226] hover:bg-[#F3F6F9] transition-colors rounded-xl ${
               isCollapsed ? "justify-center" : ""
@@ -237,14 +247,7 @@ const DashboardLayout = ({ activeMenu, children }) => {
             {!isCollapsed && <span>Sign Out</span>}
           </button>
 
-          {/* Brand Footer in Sidebar */}
-          {!isCollapsed && (
-            <div className="text-center pt-2 border-t border-[#E9ECEF] mt-2">
-              <p className="text-[8px] text-[#5E6F8D] tracking-widest uppercase font-semibold">
-                Down2Work v2.0
-              </p>
-            </div>
-          )}
+          
         </div>
 
         {/* Structural Collapse Toggle Pin - Green Theme */}
@@ -253,7 +256,11 @@ const DashboardLayout = ({ activeMenu, children }) => {
             onClick={toggleCollapse}
             className="absolute -right-3 top-16 w-6 h-6 bg-white border border-[#E9ECEF] rounded-full flex items-center justify-center text-[#5E6F8D] hover:text-[#0A6642] transition-colors shadow-sm z-50"
           >
-            {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+            {isCollapsed ? (
+              <ChevronRight className="w-3 h-3" />
+            ) : (
+              <ChevronLeft className="w-3 h-3" />
+            )}
           </button>
         )}
       </aside>
@@ -269,8 +276,8 @@ const DashboardLayout = ({ activeMenu, children }) => {
       {/* Global Context Content Body Area */}
       <div
         className="flex-1 flex flex-col min-h-screen transition-all duration-200"
-        style={{ 
-          marginLeft: isMobile ? 0 : isCollapsed ? '80px' : '256px',
+        style={{
+          marginLeft: isMobile ? 0 : isCollapsed ? "80px" : "256px",
         }}
       >
         {/* Sticky Utility Header - Green Theme */}
@@ -281,29 +288,20 @@ const DashboardLayout = ({ activeMenu, children }) => {
                 onClick={toggleSidebar}
                 className="p-1.5 rounded-lg border border-[#E9ECEF] bg-white text-[#5E6F8D] hover:text-[#0A6642] hover:border-[#0A6642] transition-colors"
               >
-                {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                {sidebarOpen ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <Menu className="h-4 w-4" />
+                )}
               </button>
             )}
+
             
-            {/* Search Component - Green Theme */}
-            <div className="hidden md:flex items-center bg-[#F3F6F9] rounded-xl px-3 py-1.5 w-72 border border-transparent focus-within:border-[#0A6642] focus-within:bg-white transition-all">
-              <Search className="h-4 w-4 text-[#5E6F8D] mr-2 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search resources, directories..."
-                className="bg-transparent border-none outline-none text-xs text-[#1D2226] w-full placeholder-[#5E6F8D]"
-              />
-            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Notification Badge - Green Theme */}
-            <button className="relative p-2 rounded-full hover:bg-[#F3F6F9] text-[#5E6F8D] hover:text-[#0A6642] transition-colors">
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#0A6642] rounded-full ring-2 ring-white" />
-              )}
-            </button>
+            {/* Notification Dropdown - Replaces the static bell */}
+            <NotificationDropdown />
 
             {/* Avatar for Mobile Viewports */}
             <button
@@ -311,7 +309,11 @@ const DashboardLayout = ({ activeMenu, children }) => {
               className="md:hidden w-7 h-7 rounded-full border border-[#E9ECEF] overflow-hidden"
             >
               {user?.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full bg-[#0A6642] flex items-center justify-center text-white font-bold text-[10px]">
                   {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -331,9 +333,7 @@ const DashboardLayout = ({ activeMenu, children }) => {
 
         {/* Central Workspace Render Node */}
         <main className="flex-1 p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+          <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
     </div>

@@ -1,3 +1,4 @@
+// frontend/src/pages/Auth/JobSeeker/SavedJobs.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -20,6 +21,7 @@ import { API_PATHS } from '../../../utlis/apiPaths';
 import { useAuth } from '../../../context/AuthContext';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import MatchScoreBadge, { MatchDetails } from '../../../components/ui/MatchScoreBadge';
+import JobDetailsModal from '../../../components/JobDetailsModal';
 import toast from 'react-hot-toast';
 import moment from 'moment';
 
@@ -29,6 +31,8 @@ const SavedJobs = () => {
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchSavedJobs();
@@ -37,11 +41,14 @@ const SavedJobs = () => {
   const fetchSavedJobs = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(API_PATHS.JOBS.GET_SAVED_JOBS);
-      setSavedJobs(response.data || []);
+      const response = await axiosInstance.get(API_PATHS.SAVED_JOBS.GET_MY);
+      // Handle both response formats
+      const data = response.data?.data || response.data || [];
+      setSavedJobs(data);
     } catch (error) {
       console.error('Error fetching saved jobs:', error);
       toast.error('Failed to load saved jobs');
+      setSavedJobs([]);
     } finally {
       setLoading(false);
     }
@@ -50,7 +57,7 @@ const SavedJobs = () => {
   const handleUnsaveJob = async (jobId, e) => {
     e.stopPropagation();
     try {
-      await axiosInstance.delete(API_PATHS.JOBS.UNSAVE_JOB(jobId));
+      await axiosInstance.delete(API_PATHS.SAVED_JOBS.UNSAVE(jobId));
       toast.success('Job removed from saved list');
       fetchSavedJobs();
     } catch (error) {
@@ -58,10 +65,15 @@ const SavedJobs = () => {
     }
   };
 
+  const handleJobClick = (jobId) => {
+    setSelectedJobId(jobId);
+    setIsModalOpen(true);
+  };
+
   const filteredJobs = savedJobs.filter(savedJob => {
     const job = savedJob.job;
     if (!job) return false;
-    return job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
            job.company?.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
            job.location?.toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -82,7 +94,7 @@ const SavedJobs = () => {
   return (
     <DashboardLayout activeMenu="saved-jobs">
       <div className="space-y-6">
-        {/* Header - LinkedIn Green Theme */}
+        {/* Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -120,7 +132,7 @@ const SavedJobs = () => {
           </div>
         </div>
 
-        {/* Jobs List - LinkedIn Green Theme */}
+        {/* Jobs List */}
         {savedJobs.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-16 text-center">
             <div className="w-20 h-20 bg-[#F3F6F9] rounded-full flex items-center justify-center mx-auto mb-6">
@@ -155,7 +167,7 @@ const SavedJobs = () => {
                 <div
                   key={savedJob._id}
                   className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6 hover:shadow-md hover:border-[#0A6642]/30 transition-all cursor-pointer group"
-                  onClick={() => navigate(`/job/${job._id}`)}
+                  onClick={() => handleJobClick(job._id)}
                 >
                   <div className="flex flex-col md:flex-row md:items-start gap-4">
                     {/* Company Logo */}
@@ -250,6 +262,19 @@ const SavedJobs = () => {
           </div>
         )}
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJobId(null);
+        }}
+        onAction={() => {
+          fetchSavedJobs();
+        }}
+      />
     </DashboardLayout>
   );
 };

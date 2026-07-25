@@ -15,10 +15,21 @@ const userSchema = new mongoose.Schema(
         avatar: { type: String, default: "" },
         resume: { type: String, default: "" },
         
+        // Common profile fields
+        bio: { type: String, default: "" },
+        title: { type: String, default: "" },
+        phone: { type: String, default: "" }, // Add phone number for job seekers
+        
         // For employer
         companyName: { type: String, default: "" },
         companyDescription: { type: String, default: "" },
         companyLogo: { type: String, default: "" },
+        companyWebsite: { type: String, default: "" },
+        companyLocation: { type: String, default: "" },
+        companyPhone: { type: String, default: "" },
+        companySize: { type: String, default: "" },
+        industry: { type: String, default: "" },
+        foundedYear: { type: String, default: "" },
         
         // Jobseeker profile fields
         skills: { type: [String], default: [] },
