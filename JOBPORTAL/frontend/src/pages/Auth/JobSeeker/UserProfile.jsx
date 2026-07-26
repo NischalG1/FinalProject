@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
@@ -23,6 +23,8 @@ import {
   ExternalLink,
   AlertCircle,
   ShieldCheck,
+  Search,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import axiosInstance from '../../../utlis/axiosinstance';
@@ -56,6 +58,11 @@ const UserProfile = () => {
   const [skillInput, setSkillInput] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
+  
+  // Title search state
+  const [titleSearchTerm, setTitleSearchTerm] = useState('');
+  const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false);
+  const titleDropdownRef = useRef(null);
 
   const EXPERIENCE_LEVELS = [
     { value: '', label: 'Select Experience Level' },
@@ -65,37 +72,211 @@ const UserProfile = () => {
     { value: 'Lead', label: 'Lead / Principal (9+ years)' },
   ];
 
+  // Professional Titles - 6 from each category
   const TITLES = [
-    { value: '', label: 'Select Your Title' },
-    { value: 'Software Engineer', label: 'Software Engineer' },
-    { value: 'Frontend Developer', label: 'Frontend Developer' },
-    { value: 'Backend Developer', label: 'Backend Developer' },
-    { value: 'Full Stack Developer', label: 'Full Stack Developer' },
-    { value: 'DevOps Engineer', label: 'DevOps Engineer' },
-    { value: 'Data Scientist', label: 'Data Scientist' },
-    { value: 'Product Manager', label: 'Product Manager' },
-    { value: 'UI/UX Designer', label: 'UI/UX Designer' },
-    { value: 'Marketing Specialist', label: 'Marketing Specialist' },
-    { value: 'Sales Representative', label: 'Sales Representative' },
-    { value: 'Project Manager', label: 'Project Manager' },
-    { value: 'Business Analyst', label: 'Business Analyst' },
+    // ===== Technology & Engineering =====
+    { value: 'Software Engineer', category: 'Technology' },
+    { value: 'Senior Software Engineer', category: 'Technology' },
+    { value: 'Frontend Developer', category: 'Technology' },
+    { value: 'Backend Developer', category: 'Technology' },
+    { value: 'Full Stack Developer', category: 'Technology' },
+    { value: 'DevOps Engineer', category: 'Technology' },
+
+    // ===== Data & Analytics =====
+    { value: 'Data Scientist', category: 'Data & Analytics' },
+    { value: 'Senior Data Scientist', category: 'Data & Analytics' },
+    { value: 'Data Analyst', category: 'Data & Analytics' },
+    { value: 'Data Engineer', category: 'Data & Analytics' },
+    { value: 'Machine Learning Engineer', category: 'Data & Analytics' },
+    { value: 'Business Intelligence Analyst', category: 'Data & Analytics' },
+
+    // ===== Product & Management =====
+    { value: 'Product Manager', category: 'Product & Management' },
+    { value: 'Senior Product Manager', category: 'Product & Management' },
+    { value: 'Project Manager', category: 'Product & Management' },
+    { value: 'Program Manager', category: 'Product & Management' },
+    { value: 'Scrum Master', category: 'Product & Management' },
+    { value: 'Business Analyst', category: 'Product & Management' },
+
+    // ===== Design & Creative =====
+    { value: 'UI/UX Designer', category: 'Design & Creative' },
+    { value: 'Senior UI/UX Designer', category: 'Design & Creative' },
+    { value: 'Product Designer', category: 'Design & Creative' },
+    { value: 'Graphic Designer', category: 'Design & Creative' },
+    { value: 'Creative Director', category: 'Design & Creative' },
+    { value: 'Web Designer', category: 'Design & Creative' },
+
+    // ===== Marketing & Communications =====
+    { value: 'Marketing Specialist', category: 'Marketing & Communications' },
+    { value: 'Marketing Manager', category: 'Marketing & Communications' },
+    { value: 'Digital Marketing Specialist', category: 'Marketing & Communications' },
+    { value: 'Content Marketing Manager', category: 'Marketing & Communications' },
+    { value: 'SEO Specialist', category: 'Marketing & Communications' },
+    { value: 'Social Media Manager', category: 'Marketing & Communications' },
+
+    // ===== Sales & Business Development =====
+    { value: 'Sales Representative', category: 'Sales & Business Development' },
+    { value: 'Sales Manager', category: 'Sales & Business Development' },
+    { value: 'Business Development Representative', category: 'Sales & Business Development' },
+    { value: 'Business Development Manager', category: 'Sales & Business Development' },
+    { value: 'Account Executive', category: 'Sales & Business Development' },
+    { value: 'Account Manager', category: 'Sales & Business Development' },
+
+    // ===== Finance & Accounting =====
+    { value: 'Financial Analyst', category: 'Finance & Accounting' },
+    { value: 'Senior Financial Analyst', category: 'Finance & Accounting' },
+    { value: 'Finance Manager', category: 'Finance & Accounting' },
+    { value: 'Accountant', category: 'Finance & Accounting' },
+    { value: 'Controller', category: 'Finance & Accounting' },
+    { value: 'Auditor', category: 'Finance & Accounting' },
+
+    // ===== Human Resources =====
+    { value: 'HR Coordinator', category: 'Human Resources' },
+    { value: 'HR Generalist', category: 'Human Resources' },
+    { value: 'HR Manager', category: 'Human Resources' },
+    { value: 'Talent Acquisition Specialist', category: 'Human Resources' },
+    { value: 'Recruiter', category: 'Human Resources' },
+    { value: 'HR Business Partner', category: 'Human Resources' },
+
+    // ===== Operations & Administration =====
+    { value: 'Operations Manager', category: 'Operations & Administration' },
+    { value: 'Senior Operations Manager', category: 'Operations & Administration' },
+    { value: 'Supply Chain Manager', category: 'Operations & Administration' },
+    { value: 'Logistics Manager', category: 'Operations & Administration' },
+    { value: 'Office Manager', category: 'Operations & Administration' },
+    { value: 'Executive Assistant', category: 'Operations & Administration' },
+
+    // ===== Consulting & Strategy =====
+    { value: 'Management Consultant', category: 'Consulting & Strategy' },
+    { value: 'Senior Management Consultant', category: 'Consulting & Strategy' },
+    { value: 'Strategy Consultant', category: 'Consulting & Strategy' },
+    { value: 'Business Consultant', category: 'Consulting & Strategy' },
+    { value: 'Analytics Consultant', category: 'Consulting & Strategy' },
+    { value: 'Digital Transformation Consultant', category: 'Consulting & Strategy' },
+
+    // ===== Executive & Leadership =====
+    { value: 'CEO', category: 'Executive & Leadership' },
+    { value: 'CTO', category: 'Executive & Leadership' },
+    { value: 'CMO', category: 'Executive & Leadership' },
+    { value: 'CFO', category: 'Executive & Leadership' },
+    { value: 'COO', category: 'Executive & Leadership' },
+    { value: 'General Manager', category: 'Executive & Leadership' },
+
+    // ===== Education & Academia =====
+    { value: 'Professor', category: 'Education & Academia' },
+    { value: 'Associate Professor', category: 'Education & Academia' },
+    { value: 'Assistant Professor', category: 'Education & Academia' },
+    { value: 'Lecturer', category: 'Education & Academia' },
+    { value: 'Teacher', category: 'Education & Academia' },
+    { value: 'Principal', category: 'Education & Academia' },
+
+    // ===== Healthcare & Medical =====
+    { value: 'Physician', category: 'Healthcare & Medical' },
+    { value: 'Surgeon', category: 'Healthcare & Medical' },
+    { value: 'Registered Nurse', category: 'Healthcare & Medical' },
+    { value: 'Pharmacist', category: 'Healthcare & Medical' },
+    { value: 'Dentist', category: 'Healthcare & Medical' },
+    { value: 'Physical Therapist', category: 'Healthcare & Medical' },
+
+    // ===== Legal =====
+    { value: 'Lawyer', category: 'Legal' },
+    { value: 'Attorney', category: 'Legal' },
+    { value: 'Paralegal', category: 'Legal' },
+    { value: 'Corporate Counsel', category: 'Legal' },
+    { value: 'General Counsel', category: 'Legal' },
+    { value: 'Compliance Officer', category: 'Legal' },
+
+    // ===== Construction & Engineering =====
+    { value: 'Civil Engineer', category: 'Construction & Engineering' },
+    { value: 'Structural Engineer', category: 'Construction & Engineering' },
+    { value: 'Mechanical Engineer', category: 'Construction & Engineering' },
+    { value: 'Electrical Engineer', category: 'Construction & Engineering' },
+    { value: 'Construction Manager', category: 'Construction & Engineering' },
+    { value: 'Project Architect', category: 'Construction & Engineering' },
+
+    // ===== Hospitality & Tourism =====
+    { value: 'Hotel Manager', category: 'Hospitality & Tourism' },
+    { value: 'Restaurant Manager', category: 'Hospitality & Tourism' },
+    { value: 'Executive Chef', category: 'Hospitality & Tourism' },
+    { value: 'Sous Chef', category: 'Hospitality & Tourism' },
+    { value: 'Event Manager', category: 'Hospitality & Tourism' },
+    { value: 'Travel Consultant', category: 'Hospitality & Tourism' },
+
+    // ===== Real Estate =====
+    { value: 'Real Estate Agent', category: 'Real Estate' },
+    { value: 'Real Estate Broker', category: 'Real Estate' },
+    { value: 'Property Manager', category: 'Real Estate' },
+    { value: 'Real Estate Developer', category: 'Real Estate' },
+    { value: 'Real Estate Analyst', category: 'Real Estate' },
+
+    // ===== Media & Entertainment =====
+    { value: 'Journalist', category: 'Media & Entertainment' },
+    { value: 'Editor', category: 'Media & Entertainment' },
+    { value: 'Producer', category: 'Media & Entertainment' },
+    { value: 'Film Director', category: 'Media & Entertainment' },
+    { value: 'Photographer', category: 'Media & Entertainment' },
+    { value: 'Video Editor', category: 'Media & Entertainment' },
+
+    // ===== Non-Profit & Social Services =====
+    { value: 'Non-Profit Manager', category: 'Non-Profit & Social Services' },
+    { value: 'Social Worker', category: 'Non-Profit & Social Services' },
+    { value: 'Community Outreach Coordinator', category: 'Non-Profit & Social Services' },
+    { value: 'Fundraising Manager', category: 'Non-Profit & Social Services' },
+    { value: 'Grant Writer', category: 'Non-Profit & Social Services' },
+    { value: 'Program Coordinator', category: 'Non-Profit & Social Services' },
+
+    // ===== Military & Government =====
+    { value: 'Government Administrator', category: 'Military & Government' },
+    { value: 'Policy Analyst', category: 'Military & Government' },
+    { value: 'Senior Policy Analyst', category: 'Military & Government' },
+    { value: 'Diplomat', category: 'Military & Government' },
+    { value: 'Military Officer', category: 'Military & Government' },
+    { value: 'Civil Servant', category: 'Military & Government' },
+
+    // ===== Other Professional Titles =====
+    { value: 'Freelancer', category: 'Other' },
+    { value: 'Consultant', category: 'Other' },
+    { value: 'Entrepreneur', category: 'Other' },
+    { value: 'Founder', category: 'Other' },
+    { value: 'Co-Founder', category: 'Other' },
+    { value: 'Self-Employed', category: 'Other' },
   ];
 
-  // Calculate profile completion - FIXED VERSION
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (titleDropdownRef.current && !titleDropdownRef.current.contains(event.target)) {
+        setIsTitleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter titles based on search term
+  const filteredTitles = TITLES.filter(title =>
+    title.value.toLowerCase().includes(titleSearchTerm.toLowerCase()) ||
+    title.category.toLowerCase().includes(titleSearchTerm.toLowerCase())
+  );
+
+  // Group filtered titles by category
+  const groupedTitles = filteredTitles.reduce((acc, title) => {
+    if (!acc[title.category]) {
+      acc[title.category] = [];
+    }
+    acc[title.category].push(title);
+    return acc;
+  }, {});
+
+  // Calculate profile completion
   const calculateProfileCompletion = (data) => {
-    // Define all fields that contribute to profile completion
     const fields = {
-      // Personal Information (25%)
       name: { weight: 10, check: (val) => val && val.trim().length > 0 },
       avatar: { weight: 10, check: (val) => val && val.trim().length > 0 },
       bio: { weight: 5, check: (val) => val && val.trim().length > 0 },
-      
-      // Professional Information (30%)
       title: { weight: 10, check: (val) => val && val.trim().length > 0 },
       skills: { weight: 15, check: (val) => Array.isArray(val) && val.length > 0 },
       resume: { weight: 5, check: (val) => val && val.trim().length > 0 },
-      
-      // Job Preferences (45%)
       preferredCategory: { weight: 10, check: (val) => val && val.trim().length > 0 },
       preferredJobType: { weight: 10, check: (val) => val && val.trim().length > 0 },
       preferredLocation: { weight: 10, check: (val) => val && val.trim().length > 0 },
@@ -107,23 +288,18 @@ const UserProfile = () => {
     let totalWeight = 0;
     let earnedWeight = 0;
 
-    // Calculate total weight and earned weight
     Object.keys(fields).forEach((key) => {
       const field = fields[key];
       totalWeight += field.weight;
-      
-      // Check if field is populated
       if (field.check(data[key])) {
         earnedWeight += field.weight;
       }
     });
 
-    // Calculate percentage (capped at 100%)
-    const percentage = Math.min(Math.round((earnedWeight / totalWeight) * 100), 100);
-    return percentage;
+    return Math.min(Math.round((earnedWeight / totalWeight) * 100), 100);
   };
 
-  // Update completion percentage whenever formData changes
+  // Update completion percentage
   useEffect(() => {
     const percentage = calculateProfileCompletion(formData);
     setCompletionPercentage(percentage);
@@ -148,8 +324,15 @@ const UserProfile = () => {
       };
       setFormData(userData);
       setAvatarPreview(user.avatar || '');
+      setTitleSearchTerm(user.title || '');
     }
   }, [user]);
+
+  const handleTitleSelect = (title) => {
+    setFormData({ ...formData, title: title.value });
+    setTitleSearchTerm(title.value);
+    setIsTitleDropdownOpen(false);
+  };
 
   const handleAddSkill = (e) => {
     e.preventDefault();
@@ -256,10 +439,8 @@ const UserProfile = () => {
       setLoading(true);
       const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, formData);
       
-      // Update user context with new data
       updateUser(response.data);
       
-      // Update form data with response
       setFormData({
         name: response.data.name || '',
         email: response.data.email || '',
@@ -275,6 +456,7 @@ const UserProfile = () => {
         bio: response.data.bio || '',
         title: response.data.title || '',
       });
+      setTitleSearchTerm(response.data.title || '');
       
       toast.success('Profile updated successfully');
       setIsEditing(false);
@@ -288,7 +470,7 @@ const UserProfile = () => {
   return (
     <DashboardLayout activeMenu="profile">
       <div className="space-y-6">
-        {/* Header - LinkedIn Green Theme */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-[#0A6642] to-[#085433] rounded-2xl shadow-lg p-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -306,7 +488,6 @@ const UserProfile = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {/* Profile Completion - FIXED: Always shows correct percentage */}
               <div className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
                 <div className="relative w-8 h-8">
                   <svg className="w-8 h-8 transform -rotate-90">
@@ -349,7 +530,6 @@ const UserProfile = () => {
                 <button
                   onClick={() => {
                     setIsEditing(false);
-                    // Reset form data to user data when cancelling
                     if (user) {
                       const userData = {
                         name: user.name || '',
@@ -368,6 +548,7 @@ const UserProfile = () => {
                       };
                       setFormData(userData);
                       setAvatarPreview(user.avatar || '');
+                      setTitleSearchTerm(user.title || '');
                     }
                   }}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-xl font-semibold hover:bg-white/20 transition-all"
@@ -460,23 +641,67 @@ const UserProfile = () => {
                   <label className="block text-sm font-medium text-[#1D2226] mb-1.5">
                     Professional Title
                   </label>
-                  <select
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                    className={`w-full px-4 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
-                      isEditing 
-                        ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent' 
-                        : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
-                    }`}
-                  >
-                    {TITLES.map((title) => (
-                      <option key={title.value} value={title.value}>
-                        {title.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative" ref={titleDropdownRef}>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                      <input
+                        type="text"
+                        value={titleSearchTerm}
+                        onChange={(e) => {
+                          setTitleSearchTerm(e.target.value);
+                          setFormData({ ...formData, title: e.target.value });
+                          setIsTitleDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsTitleDropdownOpen(true)}
+                        placeholder="Search or select your title..."
+                        disabled={!isEditing}
+                        className={`w-full pl-9 pr-10 py-2.5 border border-[#E9ECEF] rounded-xl text-sm ${
+                          isEditing 
+                            ? 'focus:outline-none focus:ring-2 focus:ring-[#0A6642] focus:border-transparent bg-white' 
+                            : 'bg-[#F3F6F9] text-[#5E6F8D] cursor-not-allowed'
+                        }`}
+                      />
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => setIsTitleDropdownOpen(!isTitleDropdownOpen)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#94A3B8] hover:text-[#475569]"
+                        >
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isTitleDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {isEditing && isTitleDropdownOpen && filteredTitles.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#E9ECEF] rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                        {Object.keys(groupedTitles).map((category) => (
+                          <div key={category}>
+                            <div className="px-3 py-1.5 text-xs font-bold text-[#0A6642] uppercase tracking-wider bg-[#F8FAFC] border-b border-[#E9ECEF] sticky top-0">
+                              {category}
+                            </div>
+                            {groupedTitles[category].map((title) => (
+                              <button
+                                key={title.value}
+                                type="button"
+                                onClick={() => handleTitleSelect(title)}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-[#E7F3E8] transition-colors flex items-center gap-2 border-b border-[#F1F5F9] last:border-0"
+                              >
+                                <Briefcase className="w-3.5 h-3.5 text-[#94A3B8]" />
+                                <span className="text-[#0F172A]">{title.value}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {isEditing && isTitleDropdownOpen && filteredTitles.length === 0 && titleSearchTerm && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#E9ECEF] rounded-xl shadow-lg p-4 text-center">
+                        <p className="text-sm text-[#475569]">No matching titles found</p>
+                        <p className="text-xs text-[#94A3B8] mt-1">You can type and enter a custom title</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="md:col-span-2">
@@ -855,6 +1080,7 @@ const UserProfile = () => {
                       };
                       setFormData(userData);
                       setAvatarPreview(user.avatar || '');
+                      setTitleSearchTerm(user.title || '');
                     }
                   }}
                   className="px-8 py-3 border border-[#E9ECEF] text-[#1D2226] rounded-xl font-semibold hover:bg-[#F3F6F9] transition-all"

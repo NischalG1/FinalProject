@@ -30,9 +30,7 @@ exports.updateProfile = async (req, res) => {
             bio,
             title
         } = req.body;
-        if (phone !== undefined) user.phone = phone;
 
-        
         console.log('📝 Received update data:', JSON.stringify(req.body, null, 2));
 
         const user = await User.findById(req.user._id);
@@ -46,6 +44,7 @@ exports.updateProfile = async (req, res) => {
         if (resume !== undefined) user.resume = resume;
         if (bio !== undefined) user.bio = bio;
         if (title !== undefined) user.title = title;
+        if (phone !== undefined) user.phone = phone;  // ✅ Moved inside common fields
 
         // If employer, allow updating company info
         if (user.role === "employer") {
@@ -84,6 +83,7 @@ exports.updateProfile = async (req, res) => {
             email: updatedUser.email,
             avatar: updatedUser.avatar,
             role: updatedUser.role,
+            phone: updatedUser.phone || '',  // ✅ Added phone to response
             // Employer fields
             companyName: updatedUser.companyName || '',
             companyDescription: updatedUser.companyDescription || '',

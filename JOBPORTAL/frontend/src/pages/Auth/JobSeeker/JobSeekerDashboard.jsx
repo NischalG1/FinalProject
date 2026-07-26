@@ -47,7 +47,7 @@ const JobSeekerDashboard = () => {
       setLoading(true);
       const [overviewRes, recsRes] = await Promise.allSettled([
         axiosInstance.get(API_PATHS.DASHBOARD.OVERVIEW),
-        axiosInstance.get(API_PATHS.JOBS.GET_RECOMMENDATIONS),
+        axiosInstance.get(API_PATHS.RECOMMENDATIONS.GET_RECOMMENDATIONS),
       ]);
 
       if (overviewRes.status === "fulfilled") {
@@ -55,9 +55,13 @@ const JobSeekerDashboard = () => {
       }
 
       if (recsRes.status === "fulfilled") {
-        setRecommendedJobs(recsRes.value.data.recommendations || []);
+        const recommendations = recsRes.value.data.recommendations || [];
+        console.log("📊 Recommendations received:", recommendations.length);
+        console.log("📊 First recommendation:", recommendations[0]);
+        
+        setRecommendedJobs(recommendations);
         setRecommendationMeta({
-          hasProfile: recsRes.value.data.hasProfile,
+          hasProfile: recsRes.value.data.hasProfile !== undefined ? recsRes.value.data.hasProfile : true,
           message: recsRes.value.data.message || "",
         });
       }
@@ -211,7 +215,7 @@ const JobSeekerDashboard = () => {
   return (
     <DashboardLayout activeMenu="dashboard">
       <div className="space-y-6">
-        {/* Welcome Header - LinkedIn Green Theme */}
+        {/* Welcome Header */}
         <div className="bg-gradient-to-r from-[#0A6642] to-[#085433] rounded-2xl shadow-lg p-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -239,7 +243,7 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards - LinkedIn Green Theme */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
@@ -288,7 +292,7 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
 
-        {/* Recommended Jobs Section - LinkedIn Green Theme */}
+        {/* Recommended Jobs Section - Match Score Badge at Bottom */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] overflow-hidden">
           <div className="p-6 border-b border-[#E9ECEF]">
             <div className="flex items-center justify-between">
@@ -345,94 +349,107 @@ const JobSeekerDashboard = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {recommendedJobs.slice(0, 6).map((job) => (
-                  <div
-                    key={job._id}
-                    onClick={() => handleJobClick(job._id)}
-                    className="group relative p-5 border-2 border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:shadow-md transition-all cursor-pointer"
-                  >
-                    <div className="absolute top-4 right-4">
-                      <MatchScoreBadge score={job.matchScore} size="sm" showLabel={true} />
-                    </div>
-
-                    <div className="flex items-start gap-3 mb-3 pr-20">
-                      {job.company?.companyLogo ? (
-                        <img
-                          src={job.company.companyLogo}
-                          alt={job.company.companyName || job.company.name}
-                          className="w-12 h-12 rounded-xl object-cover border border-[#E9ECEF] group-hover:border-[#0A6642] transition-colors shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl bg-[#E7F3E8] flex items-center justify-center border border-[#E9ECEF] group-hover:border-[#0A6642] transition-colors shrink-0">
-                          <Building2 className="w-6 h-6 text-[#0A6642]" />
+                {recommendedJobs.slice(0, 6).map((job) => {
+                  const matchScore = job.matchScore || job.matchScore === 0 ? job.matchScore : null;
+                  const matchDetails = job.matchDetails || null;
+                  
+                  return (
+                    <div
+                      key={job._id}
+                      onClick={() => handleJobClick(job._id)}
+                      className="group p-5 border-2 border-[#E9ECEF] rounded-xl hover:border-[#0A6642] hover:shadow-md transition-all cursor-pointer flex flex-col"
+                    >
+                      {/* Company Logo and Title - Removed absolute positioning */}
+                      <div className="flex items-start gap-3 mb-3">
+                        {job.company?.companyLogo ? (
+                          <img
+                            src={job.company.companyLogo}
+                            alt={job.company.companyName || job.company.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-[#E9ECEF] group-hover:border-[#0A6642] transition-colors shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-[#E7F3E8] flex items-center justify-center border border-[#E9ECEF] group-hover:border-[#0A6642] transition-colors shrink-0">
+                            <Building2 className="w-6 h-6 text-[#0A6642]" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-[#1D2226] group-hover:text-[#0A6642] transition-colors truncate text-sm">
+                            {job.title}
+                          </h3>
+                          <p className="text-xs text-[#5E6F8D] truncate font-medium">
+                            {job.company?.companyName || job.company?.name}
+                          </p>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-[#1D2226] group-hover:text-[#0A6642] transition-colors truncate text-sm">
-                          {job.title}
-                        </h3>
-                        <p className="text-xs text-[#5E6F8D] truncate font-medium">
-                          {job.company?.companyName || job.company?.name}
-                        </p>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 text-xs text-[#5E6F8D] flex-wrap mb-3">
-                      {job.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {job.location}
-                        </span>
-                      )}
-                      {job.type && (
-                        <span className="px-2 py-0.5 bg-[#E7F3E8] text-[#0A6642] rounded-full text-xs font-medium">
-                          {job.type}
-                        </span>
-                      )}
-                      {job.category && (
-                        <span className="px-2 py-0.5 bg-[#F3F6F9] text-[#5E6F8D] rounded-full text-xs font-medium">
-                          {job.category}
-                        </span>
-                      )}
-                    </div>
-
-                    {job.skills && job.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {job.skills.slice(0, 3).map((skill) => (
-                          <span
-                            key={skill}
-                            className="px-2 py-0.5 text-xs bg-[#E7F3E8] text-[#0A6642] rounded-full font-medium"
-                          >
-                            {skill}
+                      {/* Job Details - Location, Type, Category */}
+                      <div className="flex items-center gap-2 text-xs text-[#5E6F8D] flex-wrap mb-3">
+                        {job.location && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {job.location}
                           </span>
-                        ))}
-                        {job.skills.length > 3 && (
-                          <span className="px-2 py-0.5 text-xs bg-[#F3F6F9] text-[#5E6F8D] rounded-full font-medium">
-                            +{job.skills.length - 3} more
+                        )}
+                        {job.type && (
+                          <span className="px-2 py-0.5 bg-[#E7F3E8] text-[#0A6642] rounded-full text-xs font-medium">
+                            {job.type}
+                          </span>
+                        )}
+                        {job.category && (
+                          <span className="px-2 py-0.5 bg-[#F3F6F9] text-[#5E6F8D] rounded-full text-xs font-medium">
+                            {job.category}
                           </span>
                         )}
                       </div>
-                    )}
 
-                    {job.matchDetails && (
-                      <MatchDetails details={job.matchDetails} size="sm" />
-                    )}
+                      {/* Skills */}
+                      {job.skills && job.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {job.skills.slice(0, 3).map((skill) => (
+                            <span
+                              key={skill}
+                              className="px-2 py-0.5 text-xs bg-[#E7F3E8] text-[#0A6642] rounded-full font-medium"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {job.skills.length > 3 && (
+                            <span className="px-2 py-0.5 text-xs bg-[#F3F6F9] text-[#5E6F8D] rounded-full font-medium">
+                              +{job.skills.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
 
-                    {job.applicationStatus && (
-                      <div className="mt-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusColors[job.applicationStatus] || "bg-[#F3F6F9] text-[#5E6F8D] border-[#E9ECEF]"}`}>
-                          {job.applicationStatus}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      {/* Match Details */}
+                      {matchDetails && (
+                        <MatchDetails details={matchDetails} size="sm" />
+                      )}
+
+                      {/* Application Status */}
+                      {job.applicationStatus && (
+                        <div className="mt-2 mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusColors[job.applicationStatus] || "bg-[#F3F6F9] text-[#5E6F8D] border-[#E9ECEF]"}`}>
+                            {job.applicationStatus}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* ✅ Match Score Badge - Now at the bottom */}
+                      {matchScore !== null && (
+                        <div className="mt-3 pt-3 border-t border-[#E9ECEF]">
+                          <MatchScoreBadge score={matchScore} size="sm" showLabel={true} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
-        {/* Application Status Breakdown - LinkedIn Green Theme */}
+        {/* Application Status Breakdown */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6">
           <h2 className="text-xl font-bold text-[#1D2226] mb-6 flex items-center gap-2">
             <Target className="w-5 h-5 text-[#0A6642]" />
@@ -459,7 +476,7 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity - LinkedIn Green Theme */}
+        {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6">
             <div className="flex items-center justify-between mb-6">
@@ -614,7 +631,7 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
 
-        {/* Quick Actions - LinkedIn Green Theme */}
+        {/* Quick Actions */}
         <div className="bg-gradient-to-r from-[#0A6642] to-[#085433] rounded-2xl shadow-lg p-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>

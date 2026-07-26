@@ -35,12 +35,11 @@ connectDB();
 app.use(helmetConfig); // Security headers
 app.use(cors(corsOptions)); // CORS
 
-// Apply rate limiting to all routes
-app.use(createRateLimiter(15 * 60 * 1000, 100)); // 100 requests per 15 minutes
-
-// Apply stricter rate limiting to auth routes
-app.use('/api/auth/login', authRateLimiter);
-app.use('/api/auth/register', authRateLimiter);
+// RATE LIMITING - DISABLED FOR DEVELOPMENT
+// Commented out to prevent 429 errors during development
+// app.use(createRateLimiter(15 * 60 * 1000, 100)); // 100 requests per 15 minutes
+// app.use('/api/auth/login', authRateLimiter);
+// app.use('/api/auth/register', authRateLimiter);
 
 // Parse JSON with limit
 app.use(express.json({ limit: '10mb' }));
@@ -101,4 +100,5 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('Rate Limiting: DISABLED (development mode)');
 });

@@ -8,11 +8,10 @@ const RecommenderService = require("../services/recommendation/RecommenderServic
 const CacheService = require("../services/cache/CacheService");
 
 // @desc    Get hybrid recommendations for jobseeker
-// @route   GET /api/jobs/recommendations
+// @route   GET /api/recommendations
 // @access  Private (jobseeker only)
 exports.getRecommendedJobs = async (req, res) => {
     try {
-        // 1. Validate user role
         if (req.user.role !== "jobseeker") {
             return res.status(403).json({ 
                 message: "Only job seekers can get recommendations" 
@@ -21,7 +20,6 @@ exports.getRecommendedJobs = async (req, res) => {
 
         const userId = req.user._id;
         
-        // 2. Check if user has profile data
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -38,18 +36,16 @@ exports.getRecommendedJobs = async (req, res) => {
             return res.json({
                 recommendations: [],
                 message: "Complete your profile with skills and preferences to get personalized recommendations.",
-                hasProfile: true,
+                hasProfile: false,
                 totalRecommended: 0
             });
         }
 
-        // 3. Get hybrid recommendations using our new service
         const recommendations = await RecommenderService.getHybridRecommendations(
             userId, 
             parseInt(req.query.limit) || 20
         );
         
-        // 4. Get saved and applied status for the user
         const savedJobs = await SavedJob.find({ jobseeker: userId }).select("job");
         const savedJobIds = savedJobs.map(s => String(s.job));
 
@@ -59,12 +55,9 @@ exports.getRecommendedJobs = async (req, res) => {
             appliedJobStatusMap[String(app.job)] = app.status;
         });
 
-        // 5. Format response with additional data
         const formattedRecommendations = recommendations.map((item) => {
             const job = item.job.toObject();
             const jobIdStr = String(job._id);
-            
-            // Calculate match percentage (max possible score ≈ 1.0)
             const matchPercentage = Math.round(Math.min((item.score / 1.0) * 100, 100));
             
             return {
@@ -76,16 +69,14 @@ exports.getRecommendedJobs = async (req, res) => {
             };
         });
 
-        // 6. Cache the results for future requests
         const cacheKey = CacheService.getRecommendationKey(userId);
         CacheService.set(cacheKey, {
             recommendations: formattedRecommendations,
             hasProfile: true,
             totalRecommended: formattedRecommendations.length,
             message: `Found ${formattedRecommendations.length} recommended jobs based on your profile.`
-        }, 1800); // Cache for 30 minutes
+        }, 1800);
 
-        // 7. Send response
         res.json({
             recommendations: formattedRecommendations,
             hasProfile: true,
@@ -103,14 +94,13 @@ exports.getRecommendedJobs = async (req, res) => {
 };
 
 // @desc    Get similar jobs for a specific job
-// @route   GET /api/jobs/:jobId/similar
+// @route   GET /api/recommendations/similar/:jobId
 // @access  Public
 exports.getSimilarJobs = async (req, res) => {
     try {
         const { jobId } = req.params;
         const limit = parseInt(req.query.limit) || 5;
 
-        // Check cache first
         const cacheKey = CacheService.getSimilarJobsKey(jobId, limit);
         const cachedData = CacheService.get(cacheKey);
         
@@ -119,15 +109,13 @@ exports.getSimilarJobs = async (req, res) => {
             return res.json(cachedData);
         }
 
-        // Get the target job
-        const targetJob = await Job.findById(jobId);
+        const targetJob = await Job.findById(jobId).populate("company", "name companyName companyLogo");
         if (!targetJob) {
             return res.status(404).json({ message: "Job not found" });
         }
 
-        // Find similar jobs based on skills, category, and type
         const similarJobs = await Job.find({
-            _id: { $ne: jobId }, // Exclude the target job
+            _id: { $ne: jobId },
             isClosed: false,
             status: "approved",
             $or: [
@@ -137,27 +125,19 @@ exports.getSimilarJobs = async (req, res) => {
             ]
         })
         .populate("company", "name companyName companyLogo")
-        .limit(limit * 2); // Get more to filter and sort
+        .limit(limit * 2);
 
-        // Score and sort similar jobs
         const scoredSimilar = similarJobs.map(job => {
-            // Calculate skill match
             const skillMatch = RecommenderService.calculateSkillMatch(
                 targetJob.skills || [],
                 job.skills || []
             );
             
-            // Category match
             const categoryMatch = targetJob.category === job.category ? 1 : 0;
-            
-            // Type match
             const typeMatch = targetJob.type === job.type ? 1 : 0;
-            
-            // Location match (if both have location)
             const locationMatch = targetJob.location && job.location && 
                 targetJob.location.toLowerCase() === job.location.toLowerCase() ? 1 : 0;
             
-            // Calculate total similarity score
             const score = (skillMatch * 0.4) + (categoryMatch * 0.3) + (typeMatch * 0.2) + (locationMatch * 0.1);
             
             return {
@@ -172,16 +152,14 @@ exports.getSimilarJobs = async (req, res) => {
             };
         });
 
-        // Sort by similarity score and limit results
         const finalResults = scoredSimilar
             .sort((a, b) => b.similarityScore - a.similarityScore)
             .slice(0, limit);
 
-        // Cache the results
         CacheService.set(cacheKey, {
             similarJobs: finalResults,
             totalFound: finalResults.length
-        }, 3600); // Cache for 1 hour
+        }, 3600);
 
         res.json({
             similarJobs: finalResults,
@@ -197,12 +175,11 @@ exports.getSimilarJobs = async (req, res) => {
     }
 };
 
-// @desc    Get collaborative recommendations (jobs liked by similar users)
-// @route   GET /api/jobs/collaborative-recommendations
+// @desc    Get collaborative recommendations
+// @route   GET /api/recommendations/collaborative
 // @access  Private (jobseeker only)
 exports.getCollaborativeRecommendations = async (req, res) => {
     try {
-        // 1. Validate user role
         if (req.user.role !== "jobseeker") {
             return res.status(403).json({ 
                 message: "Only job seekers can get recommendations" 
@@ -212,13 +189,11 @@ exports.getCollaborativeRecommendations = async (req, res) => {
         const userId = req.user._id;
         const limit = parseInt(req.query.limit) || 10;
 
-        // 2. Get collaborative recommendations
         const recommendations = await RecommenderService.getCollaborativeRecommendations(
             userId, 
             limit
         );
 
-        // 3. Get saved and applied status
         const savedJobs = await SavedJob.find({ jobseeker: userId }).select("job");
         const savedJobIds = savedJobs.map(s => String(s.job));
 
@@ -228,7 +203,6 @@ exports.getCollaborativeRecommendations = async (req, res) => {
             appliedJobStatusMap[String(app.job)] = app.status;
         });
 
-        // 4. Format response
         const formattedRecommendations = recommendations.map((item) => {
             const job = item.job.toObject();
             const jobIdStr = String(job._id);
@@ -259,7 +233,7 @@ exports.getCollaborativeRecommendations = async (req, res) => {
 };
 
 // @desc    Clear recommendation cache
-// @route   POST /api/jobs/recommendations/clear-cache
+// @route   POST /api/recommendations/clear-cache
 // @access  Private
 exports.clearRecommendationCache = async (req, res) => {
     try {

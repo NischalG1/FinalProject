@@ -68,7 +68,11 @@ const FindJobs = () => {
         params,
       });
 
-      setJobs(response.data || []);
+      const sortedJobs = (response.data || []).sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+      setJobs(sortedJobs);
     } catch (error) {
       console.error('Error fetching jobs:', error);
       toast.error(error.response?.data?.message || 'Failed to load jobs');
@@ -79,19 +83,23 @@ const FindJobs = () => {
   };
 
   const handleSaveJob = async (jobId, isSaved) => {
-    if (!user) return;
+    if (!user) {
+      toast.error('Please login to save jobs');
+      return;
+    }
     
     try {
       if (isSaved) {
-        await axiosInstance.delete(API_PATHS.JOBS.UNSAVE_JOB(jobId));
+        await axiosInstance.delete(API_PATHS.SAVED_JOBS.UNSAVE(jobId));
         toast.success('Job removed from saved list');
       } else {
-        await axiosInstance.post(API_PATHS.JOBS.SAVE_JOB(jobId));
+        await axiosInstance.post(API_PATHS.SAVED_JOBS.SAVE(jobId));
         toast.success('Job saved successfully');
       }
       fetchJobs();
     } catch (error) {
-      toast.error('Failed to save job');
+      console.error('Save job error:', error);
+      toast.error(error.response?.data?.message || 'Failed to save job');
     }
   };
 
@@ -152,7 +160,7 @@ const FindJobs = () => {
   return (
     <DashboardLayout activeMenu="find-jobs">
       <div className="space-y-6">
-        {/* Header - LinkedIn Green Theme */}
+        {/* Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -176,7 +184,7 @@ const FindJobs = () => {
             </button>
           </div>
 
-          {/* Search Bar - LinkedIn Green Theme */}
+          {/* Search Bar */}
           <div className="mt-4 pt-4 border-t border-[#E9ECEF]">
             <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[280px] relative">
@@ -210,7 +218,7 @@ const FindJobs = () => {
           </div>
         </div>
 
-        {/* Filters Panel - LinkedIn Green Theme */}
+        {/* Filters Panel */}
         {showFilters && (
           <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-6 animate-in slide-in-from-top-2 duration-200">
             <div className="flex items-center justify-between mb-6">
@@ -307,7 +315,7 @@ const FindJobs = () => {
           </div>
         )}
 
-        {/* Jobs List - LinkedIn Green Theme */}
+        {/* Jobs List */}
         {loading ? (
           <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] p-16 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#E9ECEF] border-t-[#0A6642] mx-auto mb-4"></div>
@@ -351,7 +359,7 @@ const FindJobs = () => {
                     </div>
                   )}
 
-                  {/* Job Info */}
+                  {/* Job Info with Match Score */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h3 className="text-xl font-bold text-[#1D2226] group-hover:text-[#0A6642] transition-colors">
@@ -389,7 +397,6 @@ const FindJobs = () => {
                       )}
                     </div>
 
-                    {/* Match Details */}
                     {job.matchDetails && (
                       <MatchDetails details={job.matchDetails} size="sm" />
                     )}

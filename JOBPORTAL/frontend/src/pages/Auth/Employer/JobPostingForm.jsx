@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -20,12 +20,185 @@ import {
   Zap,
   Target,
   ShieldCheck,
+  Search,
+  ChevronDown,
 } from 'lucide-react';
 import axiosInstance from '../../../utlis/axiosinstance';
 import { API_PATHS } from '../../../utlis/apiPaths';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import { JOB_TYPES, CATEGORIES } from '../../../utlis/data';
 import toast from 'react-hot-toast';
+
+// Professional Titles - SAME as UserProfile.jsx for consistency
+// This ensures job titles and profile titles match exactly
+const PROFESSIONAL_TITLES = [
+  // ===== Technology & Engineering =====
+  { value: 'Software Engineer', category: 'Technology' },
+  { value: 'Senior Software Engineer', category: 'Technology' },
+  { value: 'Frontend Developer', category: 'Technology' },
+  { value: 'Backend Developer', category: 'Technology' },
+  { value: 'Full Stack Developer', category: 'Technology' },
+  { value: 'DevOps Engineer', category: 'Technology' },
+
+  // ===== Data & Analytics =====
+  { value: 'Data Scientist', category: 'Data & Analytics' },
+  { value: 'Senior Data Scientist', category: 'Data & Analytics' },
+  { value: 'Data Analyst', category: 'Data & Analytics' },
+  { value: 'Data Engineer', category: 'Data & Analytics' },
+  { value: 'Machine Learning Engineer', category: 'Data & Analytics' },
+  { value: 'Business Intelligence Analyst', category: 'Data & Analytics' },
+
+  // ===== Product & Management =====
+  { value: 'Product Manager', category: 'Product & Management' },
+  { value: 'Senior Product Manager', category: 'Product & Management' },
+  { value: 'Project Manager', category: 'Product & Management' },
+  { value: 'Program Manager', category: 'Product & Management' },
+  { value: 'Scrum Master', category: 'Product & Management' },
+  { value: 'Business Analyst', category: 'Product & Management' },
+
+  // ===== Design & Creative =====
+  { value: 'UI/UX Designer', category: 'Design & Creative' },
+  { value: 'Senior UI/UX Designer', category: 'Design & Creative' },
+  { value: 'Product Designer', category: 'Design & Creative' },
+  { value: 'Graphic Designer', category: 'Design & Creative' },
+  { value: 'Creative Director', category: 'Design & Creative' },
+  { value: 'Web Designer', category: 'Design & Creative' },
+
+  // ===== Marketing & Communications =====
+  { value: 'Marketing Specialist', category: 'Marketing & Communications' },
+  { value: 'Marketing Manager', category: 'Marketing & Communications' },
+  { value: 'Digital Marketing Specialist', category: 'Marketing & Communications' },
+  { value: 'Content Marketing Manager', category: 'Marketing & Communications' },
+  { value: 'SEO Specialist', category: 'Marketing & Communications' },
+  { value: 'Social Media Manager', category: 'Marketing & Communications' },
+
+  // ===== Sales & Business Development =====
+  { value: 'Sales Representative', category: 'Sales & Business Development' },
+  { value: 'Sales Manager', category: 'Sales & Business Development' },
+  { value: 'Business Development Representative', category: 'Sales & Business Development' },
+  { value: 'Business Development Manager', category: 'Sales & Business Development' },
+  { value: 'Account Executive', category: 'Sales & Business Development' },
+  { value: 'Account Manager', category: 'Sales & Business Development' },
+
+  // ===== Finance & Accounting =====
+  { value: 'Financial Analyst', category: 'Finance & Accounting' },
+  { value: 'Senior Financial Analyst', category: 'Finance & Accounting' },
+  { value: 'Finance Manager', category: 'Finance & Accounting' },
+  { value: 'Accountant', category: 'Finance & Accounting' },
+  { value: 'Controller', category: 'Finance & Accounting' },
+  { value: 'Auditor', category: 'Finance & Accounting' },
+
+  // ===== Human Resources =====
+  { value: 'HR Coordinator', category: 'Human Resources' },
+  { value: 'HR Generalist', category: 'Human Resources' },
+  { value: 'HR Manager', category: 'Human Resources' },
+  { value: 'Talent Acquisition Specialist', category: 'Human Resources' },
+  { value: 'Recruiter', category: 'Human Resources' },
+  { value: 'HR Business Partner', category: 'Human Resources' },
+
+  // ===== Operations & Administration =====
+  { value: 'Operations Manager', category: 'Operations & Administration' },
+  { value: 'Senior Operations Manager', category: 'Operations & Administration' },
+  { value: 'Supply Chain Manager', category: 'Operations & Administration' },
+  { value: 'Logistics Manager', category: 'Operations & Administration' },
+  { value: 'Office Manager', category: 'Operations & Administration' },
+  { value: 'Executive Assistant', category: 'Operations & Administration' },
+
+  // ===== Consulting & Strategy =====
+  { value: 'Management Consultant', category: 'Consulting & Strategy' },
+  { value: 'Senior Management Consultant', category: 'Consulting & Strategy' },
+  { value: 'Strategy Consultant', category: 'Consulting & Strategy' },
+  { value: 'Business Consultant', category: 'Consulting & Strategy' },
+  { value: 'Analytics Consultant', category: 'Consulting & Strategy' },
+  { value: 'Digital Transformation Consultant', category: 'Consulting & Strategy' },
+
+  // ===== Executive & Leadership =====
+  { value: 'CEO', category: 'Executive & Leadership' },
+  { value: 'CTO', category: 'Executive & Leadership' },
+  { value: 'CMO', category: 'Executive & Leadership' },
+  { value: 'CFO', category: 'Executive & Leadership' },
+  { value: 'COO', category: 'Executive & Leadership' },
+  { value: 'General Manager', category: 'Executive & Leadership' },
+
+  // ===== Education & Academia =====
+  { value: 'Professor', category: 'Education & Academia' },
+  { value: 'Associate Professor', category: 'Education & Academia' },
+  { value: 'Assistant Professor', category: 'Education & Academia' },
+  { value: 'Lecturer', category: 'Education & Academia' },
+  { value: 'Teacher', category: 'Education & Academia' },
+  { value: 'Principal', category: 'Education & Academia' },
+
+  // ===== Healthcare & Medical =====
+  { value: 'Physician', category: 'Healthcare & Medical' },
+  { value: 'Surgeon', category: 'Healthcare & Medical' },
+  { value: 'Registered Nurse', category: 'Healthcare & Medical' },
+  { value: 'Pharmacist', category: 'Healthcare & Medical' },
+  { value: 'Dentist', category: 'Healthcare & Medical' },
+  { value: 'Physical Therapist', category: 'Healthcare & Medical' },
+
+  // ===== Legal =====
+  { value: 'Lawyer', category: 'Legal' },
+  { value: 'Attorney', category: 'Legal' },
+  { value: 'Paralegal', category: 'Legal' },
+  { value: 'Corporate Counsel', category: 'Legal' },
+  { value: 'General Counsel', category: 'Legal' },
+  { value: 'Compliance Officer', category: 'Legal' },
+
+  // ===== Construction & Engineering =====
+  { value: 'Civil Engineer', category: 'Construction & Engineering' },
+  { value: 'Structural Engineer', category: 'Construction & Engineering' },
+  { value: 'Mechanical Engineer', category: 'Construction & Engineering' },
+  { value: 'Electrical Engineer', category: 'Construction & Engineering' },
+  { value: 'Construction Manager', category: 'Construction & Engineering' },
+  { value: 'Project Architect', category: 'Construction & Engineering' },
+
+  // ===== Hospitality & Tourism =====
+  { value: 'Hotel Manager', category: 'Hospitality & Tourism' },
+  { value: 'Restaurant Manager', category: 'Hospitality & Tourism' },
+  { value: 'Executive Chef', category: 'Hospitality & Tourism' },
+  { value: 'Sous Chef', category: 'Hospitality & Tourism' },
+  { value: 'Event Manager', category: 'Hospitality & Tourism' },
+  { value: 'Travel Consultant', category: 'Hospitality & Tourism' },
+
+  // ===== Real Estate =====
+  { value: 'Real Estate Agent', category: 'Real Estate' },
+  { value: 'Real Estate Broker', category: 'Real Estate' },
+  { value: 'Property Manager', category: 'Real Estate' },
+  { value: 'Real Estate Developer', category: 'Real Estate' },
+  { value: 'Real Estate Analyst', category: 'Real Estate' },
+
+  // ===== Media & Entertainment =====
+  { value: 'Journalist', category: 'Media & Entertainment' },
+  { value: 'Editor', category: 'Media & Entertainment' },
+  { value: 'Producer', category: 'Media & Entertainment' },
+  { value: 'Film Director', category: 'Media & Entertainment' },
+  { value: 'Photographer', category: 'Media & Entertainment' },
+  { value: 'Video Editor', category: 'Media & Entertainment' },
+
+  // ===== Non-Profit & Social Services =====
+  { value: 'Non-Profit Manager', category: 'Non-Profit & Social Services' },
+  { value: 'Social Worker', category: 'Non-Profit & Social Services' },
+  { value: 'Community Outreach Coordinator', category: 'Non-Profit & Social Services' },
+  { value: 'Fundraising Manager', category: 'Non-Profit & Social Services' },
+  { value: 'Grant Writer', category: 'Non-Profit & Social Services' },
+  { value: 'Program Coordinator', category: 'Non-Profit & Social Services' },
+
+  // ===== Military & Government =====
+  { value: 'Government Administrator', category: 'Military & Government' },
+  { value: 'Policy Analyst', category: 'Military & Government' },
+  { value: 'Senior Policy Analyst', category: 'Military & Government' },
+  { value: 'Diplomat', category: 'Military & Government' },
+  { value: 'Military Officer', category: 'Military & Government' },
+  { value: 'Civil Servant', category: 'Military & Government' },
+
+  // ===== Other Professional Titles =====
+  { value: 'Freelancer', category: 'Other' },
+  { value: 'Consultant', category: 'Other' },
+  { value: 'Entrepreneur', category: 'Other' },
+  { value: 'Founder', category: 'Other' },
+  { value: 'Co-Founder', category: 'Other' },
+  { value: 'Self-Employed', category: 'Other' },
+];
 
 const JobPostingForm = () => {
   const navigate = useNavigate();
@@ -45,6 +218,46 @@ const JobPostingForm = () => {
   const [errors, setErrors] = useState({});
   const [skillInput, setSkillInput] = useState('');
   const [benefitInput, setBenefitInput] = useState('');
+  
+  // Title search state
+  const [titleSearchTerm, setTitleSearchTerm] = useState('');
+  const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false);
+  const titleDropdownRef = useRef(null);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (titleDropdownRef.current && !titleDropdownRef.current.contains(event.target)) {
+        setIsTitleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter titles based on search term
+  const filteredTitles = PROFESSIONAL_TITLES.filter(title =>
+    title.value.toLowerCase().includes(titleSearchTerm.toLowerCase()) ||
+    title.category.toLowerCase().includes(titleSearchTerm.toLowerCase())
+  );
+
+  // Group filtered titles by category
+  const groupedTitles = filteredTitles.reduce((acc, title) => {
+    if (!acc[title.category]) {
+      acc[title.category] = [];
+    }
+    acc[title.category].push(title);
+    return acc;
+  }, {});
+
+  const handleTitleSelect = (title) => {
+    setFormData({ ...formData, title: title.value });
+    setTitleSearchTerm(title.value);
+    setIsTitleDropdownOpen(false);
+    if (errors.title) {
+      setErrors({ ...errors, title: '' });
+    }
+  };
 
   const handleAddSkill = (e) => {
     e.preventDefault();
@@ -139,7 +352,7 @@ const JobPostingForm = () => {
       <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 lg:px-8 font-sans text-[#0F172A]">
         <div className="max-w-4xl mx-auto space-y-6">
           
-          {/* Top Welcome Panel - Matching EmployerDashboard Styling */}
+          {/* Top Welcome Panel */}
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <button 
@@ -170,23 +383,71 @@ const JobPostingForm = () => {
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-6">
                 
-                {/* Job Title */}
+                {/* Job Title with Searchable Dropdown */}
                 <div>
                   <label className="block text-xs font-bold text-[#475569] uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Briefcase className="w-3.5 h-3.5 text-[#047857]" />
                     Job Title <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2.5 bg-[#F8FAFC] border rounded-xl text-sm text-[#0F172A] placeholder:text-[#94A3B8] transition-all focus:outline-none focus:ring-2 focus:ring-[#047857]/20 focus:border-[#047857] focus:bg-white ${
-                      errors.title ? 'border-rose-500/50 bg-rose-50/50' : 'border-[#E2E8F0]'
-                    }`}
-                    placeholder="e.g., Senior Software Engineer"
-                    required
-                  />
+                  <div className="relative" ref={titleDropdownRef}>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                      <input
+                        type="text"
+                        value={titleSearchTerm || formData.title}
+                        onChange={(e) => {
+                          setTitleSearchTerm(e.target.value);
+                          setFormData({ ...formData, title: e.target.value });
+                          setIsTitleDropdownOpen(true);
+                          if (errors.title) {
+                            setErrors({ ...errors, title: '' });
+                          }
+                        }}
+                        onFocus={() => setIsTitleDropdownOpen(true)}
+                        placeholder="Search or enter job title..."
+                        className={`w-full pl-9 pr-10 py-2.5 bg-[#F8FAFC] border rounded-xl text-sm text-[#0F172A] placeholder:text-[#94A3B8] transition-all focus:outline-none focus:ring-2 focus:ring-[#047857]/20 focus:border-[#047857] focus:bg-white ${
+                          errors.title ? 'border-rose-500/50 bg-rose-50/50' : 'border-[#E2E8F0]'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsTitleDropdownOpen(!isTitleDropdownOpen)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#94A3B8] hover:text-[#475569]"
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isTitleDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+                    
+                    {isTitleDropdownOpen && filteredTitles.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#E2E8F0] rounded-xl shadow-lg max-h-80 overflow-y-auto">
+                        {Object.keys(groupedTitles).map((category) => (
+                          <div key={category}>
+                            <div className="px-3 py-1.5 text-xs font-bold text-[#047857] uppercase tracking-wider bg-[#F8FAFC] border-b border-[#E2E8F0] sticky top-0">
+                              {category}
+                            </div>
+                            {groupedTitles[category].map((title) => (
+                              <button
+                                key={title.value}
+                                type="button"
+                                onClick={() => handleTitleSelect(title)}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-[#E7F3E8] transition-colors flex items-center gap-2 border-b border-[#F1F5F9] last:border-0"
+                              >
+                                <Briefcase className="w-3.5 h-3.5 text-[#94A3B8]" />
+                                <span className="text-[#0F172A]">{title.value}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {isTitleDropdownOpen && filteredTitles.length === 0 && titleSearchTerm && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#E2E8F0] rounded-xl shadow-lg p-4 text-center">
+                        <p className="text-sm text-[#475569]">No matching titles found</p>
+                        <p className="text-xs text-[#94A3B8] mt-1">You can type and enter a custom title</p>
+                      </div>
+                    )}
+                  </div>
                   {errors.title && (
                     <p className="text-rose-600 text-xs mt-1.5 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> {errors.title}

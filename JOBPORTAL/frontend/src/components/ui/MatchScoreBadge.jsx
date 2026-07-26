@@ -8,6 +8,9 @@ const MatchScoreBadge = ({
   showLabel = true,
   className = ''
 }) => {
+  // If score is null or undefined, don't render
+  if (score === null || score === undefined) return null;
+
   // Soft pastel background tints paired with higher contrast dark text
   const getScoreColor = (score) => {
     if (score >= 80) return 'bg-[#047857]/10 text-[#047857] border-[#047857]/20 shadow-sm';
@@ -67,7 +70,7 @@ const MatchScoreBadge = ({
   );
 };
 
-// Match Details List Component Redesign
+// Match Details List Component - Updated to hide if all values are 0
 export const MatchDetails = ({ details, size = 'sm' }) => {
   if (!details) return null;
 
@@ -86,7 +89,6 @@ export const MatchDetails = ({ details, size = 'sm' }) => {
     lg: 'text-base px-3.5 py-2 rounded-xl'
   };
 
-  // Maps pastel containers to darker text tones for legible layout architecture
   const colorMap = {
     emerald: 'bg-[#047857]/5 text-[#047857] border-[#047857]/15 hover:bg-[#047857]/10',
     sky: 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100/70',
@@ -94,12 +96,19 @@ export const MatchDetails = ({ details, size = 'sm' }) => {
     slate: 'bg-[#F1F5F9] text-[#0F172A] border-[#E2E8F0] hover:bg-[#E2E8F0]/60'
   };
 
+  // Filter out items that are undefined, null, or 0
+  const validItems = detailItems.filter((item) => {
+    const value = details[item.key];
+    return value !== undefined && value !== null && value > 0;
+  });
+
+  // If no valid items (all 0 or undefined), return null to hide the section
+  if (validItems.length === 0) return null;
+
   return (
     <div className="flex flex-wrap gap-2 mt-2.5">
-      {detailItems.map((item) => {
+      {validItems.map((item) => {
         const value = details[item.key];
-        if (value === undefined || value === null) return null;
-        
         return (
           <span 
             key={item.key}

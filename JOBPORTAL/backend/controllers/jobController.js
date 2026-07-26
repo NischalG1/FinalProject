@@ -5,6 +5,84 @@ const Application = require("../models/Application");
 const SavedJob = require("../models/SavedJobs");
 const { createNotification } = require("./notificationController");
 
+// ========== SCORING HELPER FUNCTIONS ==========
+
+const calculateSkillMatch = (userSkills, jobSkills) => {
+    if (!userSkills || !jobSkills || userSkills.length === 0 || jobSkills.length === 0) {
+        return 0;
+    }
+    
+    const userSkillSet = new Set(userSkills.map(s => s.toLowerCase().trim()));
+    const jobSkillSet = new Set(jobSkills.map(s => s.toLowerCase().trim()));
+    
+    const intersection = new Set([...userSkillSet].filter(s => jobSkillSet.has(s)));
+    const union = new Set([...userSkillSet, ...jobSkillSet]);
+    
+    return intersection.size / union.size;
+};
+
+const calculateExperienceMatch = (userLevel, job) => {
+    if (!userLevel) return 0.3;
+    
+    const jobText = `${job.title || ''} ${job.description || ''} ${job.requirements || ''}`.toLowerCase();
+    
+    const levelKeywords = {
+        Entry: ["entry", "junior", "fresher", "graduate", "0-1", "0-2", "intern", "trainee"],
+        Mid: ["mid", "intermediate", "2-5", "3-5", "2+", "3+", "mid-level"],
+        Senior: ["senior", "lead", "5+", "7+", "experienced", "sr."],
+        Lead: ["lead", "principal", "architect", "manager", "head", "director", "8+", "10+"]
+    };
+    
+    const keywords = levelKeywords[userLevel] || [];
+    if (keywords.length === 0) return 0.3;
+    
+    let matchCount = 0;
+    keywords.forEach(kw => {
+        if (jobText.includes(kw)) matchCount++;
+    });
+    
+    return Math.min(matchCount / keywords.length, 1.0);
+};
+
+const calculateLocationMatch = (userLocation, jobLocation) => {
+    if (!userLocation || !jobLocation) return 0.3;
+    
+    const uLoc = userLocation.toLowerCase().trim();
+    const jLoc = jobLocation.toLowerCase().trim();
+    
+    if (uLoc === jLoc) return 1.0;
+    if (jLoc.includes(uLoc) || uLoc.includes(jLoc)) return 0.8;
+    
+    const uWords = uLoc.split(' ');
+    const jWords = jLoc.split(' ');
+    const commonWords = uWords.filter(word => jWords.includes(word));
+    
+    return commonWords.length > 0 ? 0.6 : 0;
+};
+
+const calculateSalaryMatch = (userMin, userMax, jobMin, jobMax) => {
+    if (!userMin && !userMax) return 0;
+    if (!jobMin && !jobMax) return 0.5;
+    
+    const uMin = userMin || 0;
+    const uMax = userMax || Number.MAX_SAFE_INTEGER;
+    const jMin = jobMin || 0;
+    const jMax = jobMax || Number.MAX_SAFE_INTEGER;
+    
+    if (uMin > jMax || jMin > uMax) return 0;
+    
+    const overlapStart = Math.max(uMin, jMin);
+    const overlapEnd = Math.min(uMax, jMax);
+    const overlap = Math.max(0, overlapEnd - overlapStart);
+    
+    const userRange = uMax - uMin || 1;
+    const jobRange = jMax - jMin || 1;
+    
+    return (overlap / userRange + overlap / jobRange) / 2;
+};
+
+// ========== END SCORING HELPERS ==========
+
 // @desc    Create a new job (Employer only)
 exports.createJob = async (req, res) => {
     try {
@@ -29,7 +107,6 @@ exports.createJob = async (req, res) => {
             company: job.company
         });
 
-        // Create notification for all admins
         const admins = await User.find({ role: "admin" }).select("_id");
         for (const admin of admins) {
             await createNotification({
@@ -49,7 +126,6 @@ exports.createJob = async (req, res) => {
             });
         }
 
-        // Notify the employer that their job is pending
         await createNotification({
             recipient: req.user._id,
             sender: req.user._id,
@@ -72,8 +148,7 @@ exports.createJob = async (req, res) => {
     }
 };
 
-
-// @desc    Get all jobs with filters and user status
+// @desc    Get all jobs with filters and user status - WITH MATCH SCORES
 exports.getJobs = async (req, res) => {
     const {
         keyword,
@@ -110,13 +185,33 @@ exports.getJobs = async (req, res) => {
     try {
         const jobs = await Job.find(query).populate(
             "company",
-            "name companyName companyLogo email avatar"
+            "name companyName companyLogo email avatar companyDescription companyWebsite companyLocation companyPhone companySize industry foundedYear"
         );
 
         let savedJobIds = [];
         let appliedJobStatusMap = {};
+        let userData = null;
+        let userSkills = [];
+        let userExperience = '';
+        let userLocation = '';
+        let userSalaryMin = 0;
+        let userSalaryMax = 0;
+        let preferredCategory = '';
+        let preferredJobType = '';
 
         if (userId) {
+            const user = await User.findById(userId);
+            if (user) {
+                userData = user;
+                userSkills = user.skills || [];
+                userExperience = user.experienceLevel || '';
+                userLocation = user.preferredLocation || '';
+                userSalaryMin = user.expectedSalaryMin || 0;
+                userSalaryMax = user.expectedSalaryMax || 0;
+                preferredCategory = user.preferredCategory || '';
+                preferredJobType = user.preferredJobType || '';
+            }
+
             const savedJobs = await SavedJob.find({ jobseeker: userId }).select("job");
             savedJobIds = savedJobs.map((s) => String(s.job));
 
@@ -128,10 +223,44 @@ exports.getJobs = async (req, res) => {
 
         const jobsWithExtras = jobs.map((job) => {
             const jobIdStr = String(job._id);
+            
+            let matchScore = null;
+            let matchDetails = null;
+            
+            if (userId && userSkills && userSkills.length > 0) {
+                const skillMatch = calculateSkillMatch(userSkills, job.skills || []);
+                const experienceMatch = calculateExperienceMatch(userExperience, job);
+                const locationMatch = calculateLocationMatch(userLocation, job.location || '');
+                const salaryMatch = calculateSalaryMatch(userSalaryMin, userSalaryMax, job.salaryMin, job.salaryMax);
+                
+                const categoryMatch = (preferredCategory && job.category && preferredCategory.toLowerCase() === job.category.toLowerCase()) ? 1 : 0;
+                const jobTypeMatch = (preferredJobType && job.type && preferredJobType.toLowerCase() === job.type.toLowerCase()) ? 1 : 0;
+                
+                const totalScore = 
+                    (skillMatch * 0.35) +
+                    (experienceMatch * 0.20) +
+                    (locationMatch * 0.15) +
+                    (salaryMatch * 0.10) +
+                    (categoryMatch * 0.10) +
+                    (jobTypeMatch * 0.10);
+                
+                matchScore = Math.round(Math.min(totalScore * 100, 100));
+                matchDetails = {
+                    skillMatch: Math.round(skillMatch * 100),
+                    experienceMatch: Math.round(experienceMatch * 100),
+                    locationMatch: Math.round(locationMatch * 100),
+                    salaryMatch: Math.round(salaryMatch * 100),
+                    categoryMatch: Math.round(categoryMatch * 100),
+                    jobTypeMatch: Math.round(jobTypeMatch * 100)
+                };
+            }
+            
             return {
                 ...job.toObject(),
                 isSaved: savedJobIds.includes(jobIdStr),
                 applicationStatus: appliedJobStatusMap[jobIdStr] || null,
+                matchScore: matchScore,
+                matchDetails: matchDetails,
             };
         });
 
@@ -214,10 +343,6 @@ exports.getJobsEmployer = async (req, res) => {
 };
 
 // @desc    Get single job by ID
-// backend/controllers/jobController.js
-// Update the getJobById function to include avatar
-
-// @desc    Get single job by ID
 exports.getJobById = async (req, res) => {
     try {
         const { userId } = req.query;
@@ -232,6 +357,8 @@ exports.getJobById = async (req, res) => {
         }
 
         let applicationStatus = null;
+        let matchScore = null;
+        let matchDetails = null;
 
         if (userId) {
             const application = await Application.findOne({
@@ -242,11 +369,48 @@ exports.getJobById = async (req, res) => {
             if (application) {
                 applicationStatus = application.status;
             }
+
+            // Calculate match score for single job
+            const user = await User.findById(userId);
+            if (user && user.skills && user.skills.length > 0) {
+                const skillMatch = calculateSkillMatch(user.skills || [], job.skills || []);
+                const experienceMatch = calculateExperienceMatch(user.experienceLevel || '', job);
+                const locationMatch = calculateLocationMatch(user.preferredLocation || '', job.location || '');
+                const salaryMatch = calculateSalaryMatch(
+                    user.expectedSalaryMin || 0, 
+                    user.expectedSalaryMax || 0, 
+                    job.salaryMin, 
+                    job.salaryMax
+                );
+                
+                const categoryMatch = (user.preferredCategory && job.category && user.preferredCategory.toLowerCase() === job.category.toLowerCase()) ? 1 : 0;
+                const jobTypeMatch = (user.preferredJobType && job.type && user.preferredJobType.toLowerCase() === job.type.toLowerCase()) ? 1 : 0;
+                
+                const totalScore = 
+                    (skillMatch * 0.35) +
+                    (experienceMatch * 0.20) +
+                    (locationMatch * 0.15) +
+                    (salaryMatch * 0.10) +
+                    (categoryMatch * 0.10) +
+                    (jobTypeMatch * 0.10);
+                
+                matchScore = Math.round(Math.min(totalScore * 100, 100));
+                matchDetails = {
+                    skillMatch: Math.round(skillMatch * 100),
+                    experienceMatch: Math.round(experienceMatch * 100),
+                    locationMatch: Math.round(locationMatch * 100),
+                    salaryMatch: Math.round(salaryMatch * 100),
+                    categoryMatch: Math.round(categoryMatch * 100),
+                    jobTypeMatch: Math.round(jobTypeMatch * 100)
+                };
+            }
         }
 
         res.json({
             ...job.toObject(),
             applicationStatus,
+            matchScore,
+            matchDetails,
         });
     } catch (err) {
         console.error("Error in getJobById:", err);
@@ -264,13 +428,11 @@ exports.updateJob = async (req, res) => {
             return res.status(403).json({ message: "Not authorized to update this job" });
         }
 
-        // Store old status for notification
         const oldStatus = job.status;
 
         Object.assign(job, req.body);
         const updated = await job.save();
 
-        // If status changed from pending, notify relevant parties
         if (oldStatus !== updated.status) {
             if (updated.status === "approved") {
                 await createNotification({
@@ -322,7 +484,6 @@ exports.deleteJob = async (req, res) => {
             return res.status(403).json({ message: "Not authorized to delete this job" });
         }
 
-        // Notify the employer that their job was deleted
         await createNotification({
             recipient: req.user._id,
             sender: req.user._id,
@@ -366,7 +527,6 @@ exports.toggleCloseJob = async (req, res) => {
         job.isClosed = !job.isClosed;
         await job.save();
 
-        // Notify the employer about the status change
         const statusMessage = job.isClosed ? "closed" : "reopened";
         await createNotification({
             recipient: req.user._id,
@@ -397,17 +557,11 @@ exports.toggleCloseJob = async (req, res) => {
     }
 };
 
-// backend/controllers/jobController.js
-// Add this function at the end of the file
-
 // @desc    Get jobs by company ID (Public)
-// @route   GET /api/jobs/company/:companyId
-// @access  Public
 exports.getJobsByCompany = async (req, res) => {
     try {
         const { companyId } = req.params;
         
-        // Find all jobs posted by this company that are approved and open
         const jobs = await Job.find({ 
             company: companyId,
             status: "approved",

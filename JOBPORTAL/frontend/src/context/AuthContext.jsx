@@ -24,43 +24,33 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const accessToken = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
 
-      if (accessToken && userStr) {
-        let userData = JSON.parse(userStr);
-        
-        if (userData && userData._id && userData.email) {
-          if (!userData.role) {
-            console.warn('[AuthContext] User role missing in localStorage, fetching from backend');
-            try {
-              const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
-              if (response.data && response.data.role) {
-                userData = { ...userData, ...response.data };
-                localStorage.setItem('user', JSON.stringify(userData));
-              } else {
-                userData.role = 'jobseeker';
-                localStorage.setItem('user', JSON.stringify(userData));
-              }
-            } catch (fetchError) {
-              console.error('[AuthContext] Failed to fetch user from backend:', fetchError);
-              userData.role = 'jobseeker';
-              localStorage.setItem('user', JSON.stringify(userData));
-            }
-          }
+      if (token && userStr) {
+        // ✅ ALWAYS fetch fresh user data from backend
+        try {
+          const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
+          const freshUserData = response.data;
           
-          console.log('[AuthContext] User loaded:', {
-            id: userData._id,
-            email: userData.email,
-            role: userData.role,
-            name: userData.name
+          // Save fresh data to localStorage
+          localStorage.setItem('user', JSON.stringify(freshUserData));
+          
+          console.log('[AuthContext] User loaded from backend:', {
+            id: freshUserData._id,
+            email: freshUserData.email,
+            role: freshUserData.role,
+            name: freshUserData.name
           });
           
+          setUser(freshUserData);
+          setIsAuthenticated(true);
+        } catch (fetchError) {
+          console.error('[AuthContext] Failed to fetch user from backend:', fetchError);
+          // Fallback to localStorage data if fetch fails
+          let userData = JSON.parse(userStr);
           setUser(userData);
           setIsAuthenticated(true);
-        } else {
-          console.error('[AuthContext] Invalid user data in localStorage');
-          logout();
         }
       } else {
         console.log('[AuthContext] No token or user in localStorage');
@@ -73,37 +63,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = (userData, accessToken) => {
-    if (!userData || !userData._id || !userData.email) {
-      console.error('[AuthContext] Invalid user data provided to login');
-      return;
+  const login = async (userData, token) => {
+    // Save token first
+    localStorage.setItem('token', token);
+    
+    // ✅ Fetch fresh user data from backend
+    try {
+      const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
+      const freshUserData = response.data;
+      
+      localStorage.setItem('user', JSON.stringify(freshUserData));
+      console.log('[AuthContext] Login - user data from backend:', freshUserData);
+      setUser(freshUserData);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('[AuthContext] Login - failed to fetch user data:', error);
+      // Fallback to provided user data
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      setIsAuthenticated(true);
     }
-
-    if (!userData.role) {
-      console.warn('[AuthContext] User role missing, defaulting to jobseeker');
-      userData.role = 'jobseeker';
-    }
-
-    console.log('[AuthContext] Logging in user:', {
-      id: userData._id,
-      email: userData.email,
-      role: userData.role,
-      name: userData.name
-    });
-
-    // Tokens are already stored in localStorage by the login/signup components
-    if (accessToken) {
-      localStorage.setItem('accessToken', accessToken);
-    }
-    localStorage.setItem('user', JSON.stringify(userData));
-
-    setUser(userData);
-    setIsAuthenticated(true);
   };
 
   const logout = () => {
-    // Clear all tokens
-    localStorage.removeItem('accessToken');
+    localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
 

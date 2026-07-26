@@ -69,7 +69,7 @@ const JobDetails = () => {
   const fetchSimilarJobs = async () => {
     try {
       setLoadingSimilar(true);
-      const response = await axiosInstance.get(API_PATHS.JOBS.GET_SIMILAR_JOBS(jobId), {
+      const response = await axiosInstance.get(API_PATHS.RECOMMENDATIONS.GET_SIMILAR_JOBS(jobId), {
         params: { limit: 5 },
       });
       setSimilarJobs(response.data.similarJobs || []);
@@ -89,10 +89,10 @@ const JobDetails = () => {
 
     try {
       if (job.isSaved) {
-        await axiosInstance.delete(API_PATHS.JOBS.UNSAVE_JOB(jobId));
+        await axiosInstance.delete(API_PATHS.SAVED_JOBS.UNSAVE(jobId));
         toast.success('Job removed from saved list');
       } else {
-        await axiosInstance.post(API_PATHS.JOBS.SAVE_JOB(jobId));
+        await axiosInstance.post(API_PATHS.SAVED_JOBS.SAVE(jobId));
         toast.success('Job saved successfully');
       }
       fetchJobDetails();
@@ -181,7 +181,6 @@ const JobDetails = () => {
     );
   }
 
-  // Get company data safely
   const company = job.company || {};
   const companyAvatar = company.avatar || '';
   const companyLogo = company.companyLogo || '';
@@ -199,14 +198,13 @@ const JobDetails = () => {
           <span className="font-medium text-sm">Back to Jobs</span>
         </button>
 
-        {/* Main Job Card - LinkedIn Green Theme */}
+        {/* Main Job Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#E9ECEF] overflow-hidden">
           {/* Header Section */}
           <div className="p-8 border-b border-[#E9ECEF]">
             <div className="flex flex-col md:flex-row md:items-start gap-6">
               {/* Profile Avatar and Company Logo */}
               <div className="flex items-center gap-3 shrink-0">
-                {/* Profile Avatar (Circle) */}
                 {companyAvatar ? (
                   <img
                     src={companyAvatar}
@@ -219,7 +217,6 @@ const JobDetails = () => {
                   </div>
                 )}
                 
-                {/* Company Logo (Square) */}
                 {companyLogo ? (
                   <img
                     src={companyLogo}
@@ -243,7 +240,6 @@ const JobDetails = () => {
                   )}
                 </div>
 
-                {/* Company Name with View Profile Button */}
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-lg font-medium text-[#5E6F8D]">
                     {companyName}
@@ -307,7 +303,6 @@ const JobDetails = () => {
                   </div>
                 )}
 
-                {/* Quick Employer Info */}
                 <div className="flex flex-wrap items-center gap-3 mt-3 p-3 bg-[#F8FAFB] rounded-xl border border-[#E9ECEF]">
                   {company.companyLocation && (
                     <span className="flex items-center gap-1.5 text-xs text-[#5E6F8D]">

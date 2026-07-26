@@ -32,34 +32,18 @@ const helmetConfig = helmet({
     xssFilter: true
 });
 
-// Rate limiting configuration
+// RATE LIMITING - DISABLED FOR DEVELOPMENT
+// Just pass through without any rate limiting
 const createRateLimiter = (windowMs = 15 * 60 * 1000, max = 100) => {
-    return rateLimit({
-        windowMs,
-        max,
-        message: {
-            message: "Too many requests from this IP, please try again later."
-        },
-        standardHeaders: true,
-        legacyHeaders: false,
-        skip: (req) => {
-            // Skip rate limiting for admin routes? Optional
-            return req.path.startsWith('/api/admin');
-        }
-    });
+    return (req, res, next) => {
+        next(); // No rate limiting applied
+    };
 };
 
-// Stricter rate limiter for auth routes
-const authRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 requests per window
-    message: {
-        message: "Too many authentication attempts, please try again later."
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipSuccessfulRequests: true
-});
+// AUTH RATE LIMITER - DISABLED FOR DEVELOPMENT
+const authRateLimiter = (req, res, next) => {
+    next(); // No rate limiting for auth routes
+};
 
 // XSS Protection middleware
 const xssProtection = (req, res, next) => {
